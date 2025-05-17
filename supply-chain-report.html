@@ -77,7 +77,7 @@ blockquote.ralf-quote code {
   border-radius: 3px;
 }
 
-blockquote.semantic-quote {
+blockquote.quote {
   font-style: italic;
   background-color: #f1f1f1;
   border-left: 4px solid #888;
@@ -86,14 +86,14 @@ blockquote.semantic-quote {
   color: #333;
 }
 
-blockquote.semantic-quote code {
+blockquote.quote code {
   background-color: #eaeaea;
   padding: 2px 4px;
   font-family: monospace;
   border-radius: 3px;
 }
 
-blockquote.semantic-quote footer {
+blockquote.quote footer {
   text-align: right;
   font-style: normal;
   font-weight: bold;
@@ -138,7 +138,7 @@ blockquote.semantic-quote footer {
         <li><strong>May 13, 2025 </strong> Vulnerability Report Emailed To GitHub and Python Security Teams.</li>
         <li><strong>May 13, 2025:</strong> Microsoft Releases Firmware-Level Update KB5058379.</li>
 		<li><strong>May 14, 2025:</strong> GitHub Security Responds Stating Only Project Owners Can Issue CVEs.</li>
-        <li><strong>May 14–15, 2025:</strong> NumPy Maintainers Respond To Build Reproducibility Threads.(<a href="https://github.com/numpy/numpy/issues/28953" target="_blank">numpy/numpy#28953</a>)</li>
+        <li><strong>May 14–15, 2025:</strong> NumPy Maintainers Respond To Build Reproducibility Threads.(<a href="https://github.com/numpy/numpy/issues/28953" target="_blank">numpy/numpy/issue/28953</a>)</li>
         <li><strong>May 16, 2025:</strong> Visual Studio 2022 Updated With Compiler and ABI Tooling Changes.</li>
 		<li><strong>May 16, 2025:</strong> Same Numpy Maintainers Quietly Fortify Unit Tests (<a href="https://github.com/numpy/numpy/pull/28990/commits/6f37e80199c251289aa9fe58d118f42d5720197c" target="_blank">numpy/numpy/pull/28990</a>)</li>
 			<p>
@@ -160,6 +160,17 @@ blockquote.semantic-quote footer {
                 </p>
         	</blockquote>
 		</li>
+		<li>
+		<strong>May 17, 2025:</strong> Numpy Type Safety Is Softened (<a href=https://github.com/numpy/numpy/pull/28995/commits/8360da6645bb7529a498454e537cb10452975b62 target="_blank">numpy/pull/28995</a>)
+		<p>
+			Change implies that type checking at runtime will be supressed to prevent breakages from circular imports, eval errors, or incompatible type definitions. Could prevent downstream tooling (like Cython, or internal NumPy modules) from runtime failure because of annotation resolution at runtime.
+		</p>
+		<blockquote class="quote">
+		<p># pyright: ignore[reportDeprecated]</p>
+		</blockquote>
+		<p>Indicates deeper architectural refactoring will take time.</p>
+		</li>
+		<li><strong>May 17, 2025:</strong> Cython Protects Compiler Linking (<a href=https://github.com/cython/cython/commit/598ab1a50e424723d3c9a0918d955403a5f1567b target="_blank">cython/commit/598ab1a</a>)</li>
      </ul>
     </section>
     <section>
