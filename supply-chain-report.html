@@ -135,19 +135,19 @@ blockquote.quote footer {
     <section>
       <h2>Timeline of Events</h2>
       <ul>
-        <li><strong>May 13, 2025 </strong> Vulnerability Report Emailed To GitHub and Python Security Teams.</li>
-        <li><strong>May 13, 2025:</strong> Microsoft Releases Firmware-Level Update KB5058379.</li>
-		<li><strong>May 14, 2025:</strong> GitHub Security Responds Stating Only Project Owners Can Issue CVEs.</li>
-        <li><strong>May 14–15, 2025:</strong> NumPy Maintainers Respond To Build Reproducibility Threads.(<a href="https://github.com/numpy/numpy/issues/28953" target="_blank">numpy/numpy/issue/28953</a>)</li>
-        <li><strong>May 16, 2025:</strong> Visual Studio 2022 Updated With Compiler and ABI Tooling Changes.</li>
-		<li><strong>May 16, 2025:</strong> Same Numpy Maintainers Quietly Fortify Unit Tests (<a href="https://github.com/numpy/numpy/pull/28990/commits/6f37e80199c251289aa9fe58d118f42d5720197c" target="_blank">numpy/numpy/pull/28990</a>)</li>
+        <li><p><strong>May 13, 2025 </strong> Vulnerability Report Emailed To GitHub and Python Security Teams.</p></li>
+        <li><p><strong>May 13, 2025:</strong> Microsoft Releases Firmware-Level Update KB5058379.</p></li>
+		<li><p><strong>May 14, 2025:</strong> GitHub Security Responds Stating Only Project Owners Can Issue CVEs.</p></li>
+        <li><p><strong>May 14–15, 2025:</strong> NumPy Maintainers Respond To Build Reproducibility Threads.(<a href="https://github.com/numpy/numpy/issues/28953" target="_blank">numpy/numpy/issue/28953</a>)</p></li>
+        <li><p><strong>May 16, 2025:</strong> Visual Studio 2022 Updated With Compiler and ABI Tooling Changes.</p></li>
+		<li><p><strong>May 16, 2025:</strong> Same Numpy Maintainers Quietly Fortify Unit Tests (<a href="https://github.com/numpy/numpy/pull/28990/commits/6f37e80199c251289aa9fe58d118f42d5720197c" target="_blank">numpy/numpy/pull/28990</a>)</p></li>
 			<p>
 				Surface-level correctness (e.g., <code>.T</code> unit tests) <b>may mask memory layout mismatches introduced by ABI shifts</b> — particularly when compounded by silent assumptions from unflagged compilers.
 			</p>
 			<p>
 				NumPy’s response trajectory now places structural pressure on dependent projects like Cython — especially those that compile Python into C using inferred assumptions about layout or pointer consistency.
 			</p>
-		<li><strong>May 16, 2025:</strong> Cython issued hotfixes (<a href=https://github.com/cython/cython/compare/3.1.0-1...master target="_blank">cython/compare/3.1.0-1...master</a>) for compiler warnings in Python 3.13 builds, including unreachable code and unused parameter errors. These surfaced due to stricter warning enforcement (e.g., <code>-Werror=unused-parameter</code>) and shifting assumptions about compiler behavior.</li>
+		<li><p><strong>May 16, 2025:</strong> Cython issued hotfixes (<a href=https://github.com/cython/cython/compare/3.1.0-1...master target="_blank">cython/compare/3.1.0-1...master</a>) for compiler warnings in Python 3.13 builds, including unreachable code and unused parameter errors. These surfaced due to stricter warning enforcement (e.g., <code>-Werror=unused-parameter</code>) and shifting assumptions about compiler behavior.</p></li>
 		<li><p><strong>May 17, 2025 – NumPy Maintainer Response:</strong></p><p>The issue was closed as invalid.</p>
         <blockquote class="ralf-quote">
                 <p><strong>rgommers</strong> left a comment (<a href="https://github.com/numpy/numpy/issues/28953" target="_blank">numpy/numpy#28953</a>):</p>
@@ -161,7 +161,9 @@ blockquote.quote footer {
         	</blockquote>
 		</li>
 		<li>
-		<strong>May 17, 2025:</strong> Numpy Type Safety Is Softened (<a href=https://github.com/numpy/numpy/pull/28995/commits/8360da6645bb7529a498454e537cb10452975b62 target="_blank">numpy/pull/28995</a>)
+		<p>
+			<strong>May 17, 2025:</strong> Numpy Type Safety Is Softened (<a href=https://github.com/numpy/numpy/pull/28995/commits/8360da6645bb7529a498454e537cb10452975b62 target="_blank">numpy/pull/28995</a>)
+		</p>
 		<p>
 			Change implies that type checking at runtime will be supressed to prevent breakages from circular imports, eval errors, or incompatible type definitions. Could prevent downstream tooling (like Cython, or internal NumPy modules) from runtime failure because of annotation resolution at runtime.
 		</p>
@@ -170,7 +172,21 @@ blockquote.quote footer {
 		</blockquote>
 		<p>Indicates deeper architectural refactoring will take time.</p>
 		</li>
-		<li><strong>May 17, 2025:</strong> Cython Protects Compiler Linking (<a href=https://github.com/cython/cython/commit/598ab1a50e424723d3c9a0918d955403a5f1567b target="_blank">cython/commit/598ab1a</a>)</li>
+		<li>
+		<p>
+		<strong>May 17, 2025:</strong> An Issue Is Opened With Cython Maintainers To Share Findings (<a href=https://github.com/cython/cython/issues/6887#issuecomment-2888567425 target="_blank">cython/issue/6887</a>)
+		</p>
+		</li>
+		<li>
+		<p>
+		<strong>May 17, 2025:</strong> Cython Protects Compiler Linking (<a href=https://github.com/cython/cython/commit/598ab1a50e424723d3c9a0918d955403a5f1567b target="_blank">cython/commit/598ab1a</a>)
+		</p>
+		</li>
+		<li>
+		<p>
+		<strong>May 17, 2025:</strong> Cython Maintainer For Compiler Linking Update Responds (<a href=https://github.com/cython/cython/issues/6887#issuecomment-2888567425 target="_blank">cython/issue/6887</a>)
+		</p>
+		</li>
      </ul>
     </section>
     <section>
