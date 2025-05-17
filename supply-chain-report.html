@@ -141,14 +141,13 @@ blockquote.semantic-quote footer {
         <li><strong>May 14–15, 2025:</strong> NumPy Maintainers Respond To Build Reproducibility Threads.(<a href="https://github.com/numpy/numpy/issues/28953" target="_blank">numpy/numpy#28953</a>)</li>
         <li><strong>May 16, 2025:</strong> Visual Studio 2022 Updated With Compiler and ABI Tooling Changes.</li>
 		<li><strong>May 16, 2025:</strong> Same Numpy Maintainers Quietly Fortify Unit Tests (<a href="https://github.com/numpy/numpy/pull/28990/commits/6f37e80199c251289aa9fe58d118f42d5720197c" target="_blank">numpy/numpy/pull/28990</a>)</li>
-        <blockquote class="semantic-quote">
 			<p>
-				“Surface-level correctness (e.g., <code>.T</code> unit tests) may mask memory layout mismatches introduced by ABI shifts — particularly when compounded by silent assumptions from unflagged compilers.”
+				Surface-level correctness (e.g., <code>.T</code> unit tests) <b>may mask memory layout mismatches introduced by ABI shifts</b> — particularly when compounded by silent assumptions from unflagged compilers.
 			</p>
 			<p>
-				“NumPy’s response trajectory now places structural pressure on dependent projects like Cython — especially those that compile Python into C using inferred assumptions about layout or pointer consistency.
+				NumPy’s response trajectory now places structural pressure on dependent projects like Cython — especially those that compile Python into C using inferred assumptions about layout or pointer consistency.
 			</p>
-		</blockquote>
+		<li><strong>May 16, 2025:</strong> Cython issued hotfixes (<a href=https://github.com/cython/cython/compare/3.1.0-1...master target="_blank">cython/compare/3.1.0-1...master</a>) for compiler warnings in Python 3.13 builds, including unreachable code and unused parameter errors. These surfaced due to stricter warning enforcement (e.g., <code>-Werror=unused-parameter</code>) and shifting assumptions about compiler behavior.</li>
 		<li><p><strong>May 17, 2025 – NumPy Maintainer Response:</strong></p><p>The issue was closed as invalid.</p>
         <blockquote class="ralf-quote">
                 <p><strong>rgommers</strong> left a comment (<a href="https://github.com/numpy/numpy/issues/28953" target="_blank">numpy/numpy#28953</a>):</p>
