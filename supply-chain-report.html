@@ -198,6 +198,72 @@ blockquote.quote footer {
      </ul>
     </section>
     <section>
+	<section id="threat-vectors">
+  <h2>Upstream-to-Downstream Threat Vectors</h2>
+  <p>Below are key risks that emerge when upstream changes propagate silently into downstream AI ecosystems and infrastructure. Each represents a potential point of compromise in reproducibility, integrity, or trust.</p>
+
+  <ol>
+    <li>
+	<p>
+      <strong>ABI Drift</strong><br>
+      Silent behavioral changes from compiler updates (e.g., <code>C23</code> union padding) can lead to memory corruption, data loss, or silent inference errors.
+	</p>
+    </li>
+    <li>
+	<p>
+      <strong>Descriptor Manipulation</strong><br>
+      Descriptors like <code>__module__</code>, <code>__get__</code>, <code>__class__</code> may be altered or removed, breaking reflection, type safety, or enabling attribute hijacking.
+	</p>
+    </li>
+    <li>
+	<p>
+      <strong>Slot Injection</strong><br>
+      Type slots (<code>tp_slots</code>) modified or reordered during build can alter object behavior or strip away expected protections in Python.
+	</p>
+    </li>
+    <li>
+	<p>
+      <strong>Vendored Compiler Hijack</strong><br>
+      Bundled compilers may silently ignore or override security-critical flags. This breaks reproducibility and opens backdoors for injected logic.
+    </p>
+	</li>
+    <li>
+	<p>
+      <strong>Build System Exploits</strong><br>
+      Build tools like <code>Meson</code> or <code>setuptools</code> may suppress or misrepresent build flags. CI logs and security audits become unreliable.
+    </p>
+	</li>
+    <li>
+	<p>
+      <strong>Reproducibility Spoofing</strong><br>
+      Build behaviors may vary based on CI, user account, or environment variables — producing misleading artifacts across systems.
+    </p>
+	</li>
+    <li>
+	<p>
+      <strong>Lazy Hook Injection</strong><br>
+      Via deferred loaders, import hooks, or dynamic descriptors, attackers can delay payload execution until runtime conditions are met.
+    </p>
+	</li>
+    <li>
+      <strong>Silent Inference Corruption</strong><br>
+      Subtle miscompilation can lead to numerical errors or degraded outputs in AI models that are nearly impossible to trace back.
+    </li>
+    <li>
+	<p>
+      <strong>Error Gating & Log Suppression</strong><br>
+      Compiler warnings and tracebacks can be gated behind runtime switches or CLI arguments, reducing observability.
+    </p>
+	</li>
+    <li>
+	<p>
+      <strong>Limited API Descriptor Shadows</strong><br>
+      Python’s limited C API omits many standard descriptors, allowing upstreams to substitute weaker fallbacks without detection.
+    </p>
+	</li>
+  </ol>
+</section>
+
       <h2>Conclusion</h2>
 
 <p>
