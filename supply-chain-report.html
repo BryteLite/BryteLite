@@ -158,7 +158,7 @@ blockquote.quote footer {
                 <p>
                 	Please feel free to post the example you were talking about, but in the meantime I'll close this issue as invalid because there are way too many things here that don't add up while they may look concerning to the casual reader.
                 </p>
-        	</blockquote>
+        </blockquote>
 		</li>
 		<li>
 		<p>
@@ -244,6 +244,38 @@ blockquote.quote footer {
 		<li>
 		<p>
 		<strong>May 17, 2025:</strong> Submitted Issue on Matplotlib (<a href=https://github.com/matplotlib/matplotlib/issues/30064 target="_blank">matplotlib/issues/30064</a>)
+		</p>
+		</li>
+		<li><p><strong>May 17, 2025 – Main Meson Contributor Reponds To Report:</strong></p>
+        <blockquote class="quote">
+                <p><strong>eli-schwartz</strong> left a comment (<a href=https://github.com/python/cpython/issues/99942 target="_blank">cpython/issues/99942</a>):</p>
+                My technical critique is that this report appears to be AI generated. It contains numerous hallucinations which can be trivially disproven. It is also 100% unrelated to the current ticket, which has nothing to do with gcc (15 or otherwise), nor with C standard versions.
+				Please avoid posting distractingly incorrect info.
+				@sethmlarson we have another case of https://sethmlarson.dev/slop-security-reports I think</p></p>
+                <p>
+        </blockquote>
+		<p>
+			This was the response offered by one of the developers involved in several cross-project build changes. 
+			The critique focused not on the technical findings, but on presumed authorship. 
+			No specific refutation was given regarding the compiler flag propagation or the ABI observations. Even though specifying observing things like:
+		</p>
+		<blockquote class="quote">
+			<p><strong>eli-schwartz</strong> left a comment (<a href=https://github.com/python/cpython/issues/99942 target="_blank">cpython/issues/99942</a>):</p>
+            There's a couple problems with this:
+			on Cygwin and Android, LIBPYTHON and thus pkg-config is hardcoded to link to libpython, but distutils only does so when Py_ENABLE_SHARED
+			none of it works on Windows, which since it is built with PCBuild, doesn't have Makefile config vars (and also / consequently? distributes neither of the latter two)
+			pkg-config may not always be installed, so we want a fallback for that
+			python-config has tons of CPython build-time junk so we cannot use it
+			<strong>It feels uncomfortably like there's still way too much undocumented magic here.</strong></p>
+			</p>
+        </blockquote>
+		<p>
+			Rather than addressing the documented inconsistencies, the conversation shifted toward dismissing its origin — ironically reaffirming the very lack of transparency the report sought to highlight. I guess I'm not human... <strong>beep boop.</strong>
+			I very much am a living, breathing human being. I admit that a lot of this content has been formatted by AI. I'm just using it to augment the research that I would be able to do otherwise. There's a certain irony in AI generated content helping to preserve
+			the posterity of AI generated content.
+		</p>
+		<p>
+			Also...how did you have that on hand?
 		</p>
 		</li>
      </ul>
