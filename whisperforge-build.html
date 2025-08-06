@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>WHISPERFORGE - The Build They Tried To Silence</title>
+    <link rel="icon" href="whisperforge-logo.png" type="image/png">
+	<style>
+        @media (min-width: 1200px) {
+            .content {
+                padding: 2rem 4rem;
+            }
+        }
+
+		body {
+			font-family: system-ui, sans-serif;
+			margin: 0;
+			padding: 0;
+			line-height: 1.6;
+			background: #ffffff;
+			color: #222;
+		}
+
+		header {
+			display: flex;
+	        justify-content: space-between;
+	        align-items: center;
+	        background: #003366;
+	        color: #fff;
+	        padding: 1rem 2rem;
+	        flex-wrap: wrap; 
+		}
+
+		header h1 {
+			margin: 0;
+			font-size: 2rem;
+		}
+
+		.content {
+			max-width: auto;
+			margin: auto;
+			padding: 2rem;
+		}
+
+        section {
+            margin: 0 1rem 2.5rem 1rem;
+        }
+
+        @media (min-width: 1200px) {
+            section {
+                margin: 0 4rem 3rem 4rem;
+            }
+        }
+
+        .ghost-logo {
+	        position: fixed;
+	        top: 50%;
+	        left: 50%;
+	        transform: translate(-50%, -50%);
+	        width: 400px;
+	        height: 400px;
+	        background: url('whisperforge-logo.png') no-repeat center center;
+	        background-size: contain;
+	        opacity: 0.03;
+        	pointer-events: none;
+	        z-index: 0;
+        }
+
+
+		h2 {
+			color: #003366;
+			margin-top: 2rem;
+		}
+
+		h3 {
+			color: #003366;
+			margin-top: 2rem;
+		}
+
+		a {
+			color: #005ea2;
+		}
+
+		footer {
+			text-align: center;
+			padding: 1rem;
+			background: #f1f1f1;
+			font-size: 0.9rem;
+		}
+
+		code {
+			background: #f5f5f5;
+			padding: 2px 4px;
+			font-family: monospace;
+		}
+
+		blockquote.quote {
+			font-style: italic;
+			background-color: #f1f1f1;
+			border-left: 4px solid #888;
+			padding: 1em 1.5em;
+			margin: 2em 0;
+			color: #333;
+		}
+
+		blockquote.quote code {
+			background-color: #eaeaea;
+			padding: 2px 4px;
+			font-family: monospace;
+			border-radius: 3px;
+		}
+
+		blockquote.quote footer {
+			text-align: right;
+			font-style: normal;
+			font-weight: bold;
+			margin-top: 1em;
+		}
+	</style>
+</head>
+<body>
+	<header>
+		<h1>WHISPERFORGE - The Build They Tried To Silence</h1>
+        <!--<img src="whisperforge-logo.png" alt="Whisperforge Logo" class="header-logo"> -->    
+	</header>
+		<section>
+			<h2>Preface</h2>
+				<p>After being a <a href="battle-report.html">hacked</a> by a bad actor, my prized rig was gone. My OS was org locked, my data was ascii souped and
+                   I had no control of my own services, even on a local account.  I knew there was no way to recover what was lost on this machine. Instead of letting
+                   it die though, I chose a different path. I decided to wipe the drives clean and start new.</p>
+		</section>
+		<section>
+			<h2>Step 1: Pick A Distro</h2>
+				<p>There were a lot of distros to pick from. I've had some experience with Ubuntu and Arch, but neither really called to me as something I would use as
+                   a daily driver. In light of hardware that would soon go EOL and a standards baseline that was shifting, I knew I had a window (pun intended) to lock
+                   in a fresh baseline that can continue to use my hardware. Instead of shaming vendors for choosing the path of EOL for reference cards that still chug,
+                   I was going to take it upon myself to protect my rig when an organization had failed me. I selected a distribution that preserved the familiar workflow
+                   I had relied on.
+                </p>
+                <h3>OS Selection:</h3>
+                <p>
+                   Linux Mint 22.1 “Xia” (MATE Edition)<br>
+                   Codename: xia  <br>
+                   Base: Ubuntu 24.04 LTS “Noble Numbat"
+                </p>
+                <p>
+                    I chose Linux Mint 22.1 "Xia" (MATE Edition), built on Ubuntu 24.04 LTS "Noble Numbat", to future-proof my hardware stack. 
+                    With an AM4 platform and NVIDIA 2080 SUPER in play, I needed a distro that wouldn’t bottleneck performance or lag behind on driver support.
+                    The newer kernel and updated Mesa/NVIDIA stack in Noble allowed me to fully unlock GPU acceleration and audio throughput while leveraging PipeWire
+                    for high-fidelity audio. Despite the initial pain of firmware quirks and manual tuning, the long-term performance gains made it the right call over
+                    the more stable but aging Virginia release.
+                </p>
+        </section>
+		<section>
+			<h2>Step 2: Installing The Distro</h2>
+				<p>
+                    The process was nothing new, find a Linux Mint ISO, get Rufus, install the bootloader and image to a USB stick and go. 
+                    I was able to do this on a backup machine, but there were some gotchas (BIOS-level hurdles, service hangs, driver quirks).
+                    I had to target the most compatible Linux Mint ISO that I could speculate. I chose Xia, since it's built on Ubuntu that has good support
+                    for older hardware and is already mature. It sounded great on paper, but then getting the install working came with its own issues.
+                </p>
+		        <ol>
+			        <li>My BIOS did not support UEFI on the Live USB OS. Secure Boot Off</li>
+			        <li>There are issues with firmware on mass-produced reference boards that seem biased towards Windows OS environments.</li>
+			        <li>Hours were spent reading the Kernel Debug Outputs figuring out what services were getting hung.</li>
+			        <li>I had to disable Realtek devices with snd_hda_intel=0</li>
+			        <li>It was determined that some services like Bluetooth would get hung up if pci=noaer was not added to kernel parameters.</li>
+			        <li>After getting through the services to boot, the Live USB ISO was used to install the OS to the disk.</li>
+			        <li>Once the OS was installed, the system was rebooted with the same kernel parameters as before.</li>
+			        <li>The microcode for the hardware was installed.</li>
+			        <li>Realtek was renabled and controlled through PipeWire.</li>
+			        <li>Some low level configuring was required to tinker with the audio pipeline in order to retain 192KHz sample rate.</li>
+                    <li>
+                        It was noted that modern browsers have access to the hardware directly through a dummy stub in Realtek usually reserved for "accessibility",
+                        this was removed. Now I get browser complaints. Oh well.
+                    </li>
+			        <li>Once the machine was stable, a backup was performed.</li>
+		        </ol>
+        </section>
+		<section>
+			<h2>Step 3: Secure What Was Rebuilt</h2>
+			<p>
+                Part of this was my fault. I should have been maintaining my home rig. I was negligent to my rig being so busy with the 9-5,
+                but that's not an excuse. Never again. Going forward I'd have my own backups. All disks will have encryption.
+                TPM and runtime encryption is how I will operate. Process validation will become the norm. Nothing gets elevated processes, not even me.
+                Root tty1? Dead. Remote Access? No one. Every time a process is performed, it will be audited. I'm taking back what's mine.
+                Am I being paranoid? Not without just cause. If anything I am responding to the incident as a learning lesson.
+            </p>
+            <h3>Steps Taken:</h3>
+		    <ol>
+			    <li>root tty1 access is no longer a thing. I manually authorize system configurations.</li>
+			    <li>Daily driver user account separated from the system configuration.</li>
+			    <li><code>ufw</code> - Deny All</li>
+			    <li>Purge stale or not needed services.</li>
+			    <li>
+                    Automated Backup Services, <code>timeshift</code>, only available when user is authenticated with access 
+                    keys encrypted at run time under three cryptographic hash sets.
+                </li>
+			    <li>Utilize <code>AIDE</code> to track the integrity of system files.</li>
+			    <li>Audit Permissions For Every Service.</li>
+			    <li>When default installs add extra packages, I make my own tailored build.</li>
+			    <li>Troublesome Intel ME pipelines neutered, hardware restricted and/or monitored.</li>
+			    <li>BIOS is now locked.</li>
+                <li>CSM disabled.</li>
+                <li>Extra Boot Entries are removed.</li>
+                <li>Pivoting to OS Development to ensure trusted runtime operation.</li>
+                <li>VPN Traffic.</li>
+                <li>Secure DNS.</li>
+                <li>On the fly reconfigurations and Dead-Man-Switches.</li>
+                <li><code>journalctl</code> monitoring.</li>
+                <li><code>bash</code> script services to maintain system integrity.</li>
+                <li><code>/etc/*/*.conf</code> monitoring.</li>
+		    </ol>
+            <p>
+                As the final move in reclaiming control, I will be reflashing the BIOS firmware after full OS stabilization. 
+                This eliminates any remaining low-level compromise, including potential UEFI rootkits or modified firmware partitions.
+                The updated BIOS will have Secure Boot re-established with my own signed keys, CSM disabled, boot entries sanitized,
+                and flash-write protection engaged. From the lowest layer up, this system is now mine—rebuilt, hardened, and silenced.
+            </p>
+        </section>
+		<section>
+			<h2>Step 4: Enjoy The Whisper</h2>
+				<p>
+                    It's strange what kind of power you can get from your hardware when you cut out all the bloat.
+                    For a long time I've traded convenience for the monopolization of the platform I rightfully owned.
+                    Now the machine barely makes a sound. Under load it just prefers to "Whisper".</p>
+        </section>
+    </body>  
+    <div class="content ghost-logo">
+    </div>
+    <footer>
+    &copy; 2025 BryteLite | ThinkTank Project  
+			All rights reserved.  
+			Licensed under Creative Commons Attribution 4.0 International (CC BY 4.0).  
+			Attribution required if used or referenced
+			Last updated: July 26, 2025.
+    </footer>
+</html>

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>ARCHER - The Arch Linux Acer Laptop Build</title>
+	<style>
+		body {
+			font-family: system-ui, sans-serif;
+			margin: 0;
+			padding: 0;
+			line-height: 1.6;
+			background: #ffffff;
+			color: #222;
+		}
+
+		header {
+			background: #003366;
+			color: #fff;
+			padding: 1rem 2rem;
+		}
+
+		header h1 {
+			margin: 0;
+			font-size: 2rem;
+		}
+
+		.content {
+			max-width: 900px;
+			margin: auto;
+			padding: 2rem;
+		}
+
+        section {
+            margin: 0 1rem 2.5rem 1rem;
+        }
+
+        @media (min-width: 1200px) {
+            section {
+                margin: 0 4rem 3rem 4rem;
+            }
+        }
+
+
+		h2 {
+			color: #003366;
+			margin-top: 2rem;
+		}
+
+		a {
+			color: #005ea2;
+		}
+
+		footer {
+			text-align: center;
+			padding: 1rem;
+			background: #f1f1f1;
+			font-size: 0.9rem;
+		}
+
+		code {
+			background: #f5f5f5;
+			padding: 2px 4px;
+			font-family: monospace;
+		}
+
+		blockquote.ralf-quote {
+			font-style: italic;
+			background-color: #f9f9f9;
+			border-left: 4px solid #ccc;
+			padding: 1em 1.5em;
+			margin: 1.5em 0;
+			color: #333;
+		}
+
+		blockquote.ralf-quote p {
+			margin-bottom: 1em;
+		}
+
+		blockquote.ralf-quote code {
+			background: #eee;
+			padding: 2px 4px;
+			font-family: monospace;
+			border-radius: 3px;
+		}
+
+		blockquote.quote {
+			font-style: italic;
+			background-color: #f1f1f1;
+			border-left: 4px solid #888;
+			padding: 1em 1.5em;
+			margin: 2em 0;
+			color: #333;
+		}
+
+		blockquote.quote code {
+			background-color: #eaeaea;
+			padding: 2px 4px;
+			font-family: monospace;
+			border-radius: 3px;
+		}
+
+		blockquote.quote footer {
+			text-align: right;
+			font-style: normal;
+			font-weight: bold;
+			margin-top: 1em;
+		}
+	</style>
+</head>
+<body>
+	<header>
+		<h1>ARCHER - The Arch Linux Acer Build</h1>
+	</header>
+		<section>
+			<h2>Preface</h2>
+				<p>Following the aftermath of a cyber attack, it was determined that the Windows Cloud Environment had been compromised. With that being said, the artifacts left behind in the wake of the cyber attack needing reverse engineering and documenting.  This couldn't be done reliably on a Windows system.  The attacker clearly already had the means to intercept multiple attack surface vectors. While the root cause couldn't be established at the time, the prudent thing to do was to create a different environment towards diagnosis, reverse engineering and forensic analysis. The tools: an underpowered Celeron Acer Notebook from 2015, a minimal Arch Linux LIVE USB distro and prayer.</p>
+		</section>
+		<section>
+			<h2>Backstory: Previous Attempts</h2>
+			<p>This was not the first time I had attempted to boot a Linux distro on this machine.  In the past I had tried to install Linux Mint and Ubuntu LTE.  Both had complications handling the firmware negotiation with the BIOS.  It was discovered while playing with the EFI structure of the boot partion that the BIOS, an OEM one, had issues running when using the fallback BOOTX64.EFI that is commonly used for Linux distros. Even after manually making the EFI structure available and double checking grub.efi, grub.cfg and the other distro specific configurations, I would consistently fail to get to kernel. Even after disabling common known issues, like the laptop microphone, intel_audio, bluetooth and shoddy AER (Advanced Error Reporting), nothing would land me into a console or GUI. After some investigation, I noticed that the NVRAM was set to read-only. I then recalled that the laptop came with a preinstalled Windows 10 OS straight from the factory. At this point the lightbulb went off. If the BIOS is having issue negotiating kernel hooks, refuses to boot other distros in secure boot (normal behavior of secure boot) and is not booting from the fallback path, it might be possible that the machine was never intended to boot linux.  As limited as my understanding is of UEFI, this is in direct conflict from how UEFI is supposed to function. UEFI is supposed to support the booting of different operating systems and is core-function leveraged in dual-booting. This is when I got an idea of how to take advantage of this design though.</p>
+		</section>
+		<section>
+			<h2>Stage 1: Prepare The Distro</h2>
+			<p>I have had some experiencing with Arch Linux in the past recovering dead or corrupted operating systems. I knew that the distro would be the perfect choice when working in close proximity to the bare metal.  Arch is also capable of running completely live, regardless of storage persistence and in RAM.  This was going to be ideal for dealing with a non-cooperative BIOS.</p>
+		</section>
+		<section>
+			<h2>Stage 2: Live Booting</h2>
+			<p>Live booting the Arch Distro was fairly straight-forward. Disable Secure Boot (more info on why later), got the BIOS screen and select the USB partition to boot from. This executed without any problems. I still had a problem, NVRAM and my Boot Entries were read-only. This is where my idea comes into play.</p>
+		</section>
+        <section>
+			<h2>Stage 3: Spoofing Windows and Manually Building the Bootloader Config</h2>
+			<p>Live booting the Arch Distro was fairly straight-forward. Disable Secure Boot (more info on why later), got the BIOS screen and select the USB partition to boot from. This executed without any problems. I still had a problem, NVRAM and my Boot Entries were read-only. This is where my idea comes into play.</p>
+		</section>
+        <section>
+			<h2>Stage 4: Lock Down GRUB</h2>
+			<p>The problem with GRUB as a bootloader is that if it's not properly configured, it can be abused. Any EFI can be placed in proximity to GRUB. The GRUB configuration can be altered if not root protected. It was clear that I never had root access on this laptop. The UEFI for the laptop was configured to boot the Windows image that was preinstalled on it and nothing else. This means anyone can do what I did and swap the EFI with their own. This can't be done remotely though. With a BIOS Password in place, locking down the GRUB to only accept allowed images in its config locks down the machine.</p>
+		</section>
+        <section>
+			<h2>Stage 5: Why This Is Good In a Weird Way</h2>
+			<p>I can't stop someone from repeating the steps I took to make Linux work on my machine. Since the BIOS does not give out root-access and restricts booting anything else that isn't Windows, there is no way for someone to perform a boot attack on this machine remotely. This machine can only be root attacked from having physical access to it. Since anyone querying firmware will see a Windows Boot Path, anyone attacking a Linux Kernel will be attempting to attack it from the BOOTX64.EFI path. That fallback is removed after the spoofing and the BIOS will always prefer my spoofed path.  If someone wants to corrupt the Windows boot path, they'd need to do it from the Linux fallback, which is second priority. This leaves any boot, rootkit or firmware attack stuck having an existential crisis on what they are exactly. With NVRAM being read-only, there are no other vectors left open. At a glance, my system looks like it points to a Windows Boot Manager. The BIOS even reads the partition and Boot Loader as such. I'm now running a stealth Arch Linux build that appears to be a Windows Boot Path. The only way to change it is to have root level access, which no one does or have physical access and my BIOS password.</p>
+		</section>
+        <section>
+			<h2>Afterthoughts</h2>
+			<p>My original plan for this machine was to use it as a sacrifice to see what the rootkit USB I was left with would do. Running in Arch Linux I was able to monitor the USB, its activity and inspect its contents to understand how it works. I was also able to forensically view both bad USBs to extract their tradecraft secrets and their methodology. I had some concerns understanding about the state of the machine in persitence since I knew this persistence kit worked on my main rig, WHISPERFORGE, and I'm actively hunting it down to extract it. If NVRAM on this laptop is read-only, every single boot is expected to be a fresh run. The attacker would have had no way to make sure any SPI and/or I2C influences he was using would disappear after a power cycle. I'm confident moving forward that this laptop can be used reliably for a long time to come.</p>
+		</section>
+  <div class="content">
+  </div>
+  <footer>
+    &copy; 2025 BryteLite | ThinkTank Project  
+			All rights reserved.  
+			Licensed under Creative Commons Attribution 4.0 International (CC BY 4.0).  
+			Attribution required if used or referenced
+			Last updated: July 25, 2025.
+  </footer>
+</body>
+</html>

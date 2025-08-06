@@ -1,0 +1,1529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>How A Bad Actor Unveiled An Industry Wide Red Team Exercise</title>
+	<style>
+		body {
+			font-family: system-ui, sans-serif;
+			margin: 0;
+			padding: 0;
+			line-height: 1.6;
+			background: #ffffff;
+			color: #222;
+		}
+
+		header {
+			background: #003366;
+			color: #fff;
+			padding: 1rem 2rem;
+		}
+
+		header h1 {
+			margin: 0;
+			font-size: 2rem;
+		}
+
+		.content {
+			max-width: 900px;
+			margin: auto;
+			padding: 2rem;
+		}
+
+        section {
+            margin: 0 1rem 2.5rem 1rem;
+        }
+
+        @media (min-width: 1200px) {
+            section {
+                margin: 0 4rem 3rem 4rem;
+            }
+        }
+
+		h2 {
+			color: #003366;
+			margin-top: 2rem;
+		}
+
+		a {
+			color: #005ea2;
+		}
+
+		footer {
+			text-align: center;
+			padding: 1rem;
+			background: #f1f1f1;
+			font-size: 0.9rem;
+		}
+
+		code {
+			background: #f5f5f5;
+			padding: 2px 4px;
+			font-family: monospace;
+		}
+
+		blockquote.quote {
+			font-style: italic;
+			background-color: #f1f1f1;
+			border-left: 4px solid #888;
+			padding: 1em 1.5em;
+			margin: 2em 0;
+			color: #333;
+		}
+
+		blockquote.quote code {
+			background-color: #eaeaea;
+			padding: 2px 4px;
+			font-family: monospace;
+			border-radius: 3px;
+		}
+
+		blockquote.quote footer {
+			text-align: right;
+			font-style: normal;
+			font-weight: bold;
+			margin-top: 1em;
+		}
+	</style>
+</head>
+<body>
+	<header>
+		<h1>How A Bad Actor Unveiled An Industry Wide Red Team Exercise</h1>
+	</header>
+		<section>
+			<h2>Preface</h2>
+				<p>On Saturday, June 28th, 2025, I noticed strange activity occurring on my machine. I was quietly working away on some side projects, working with ChatGPT and writing up some code for side projects, one of them being Hexicon. While working on my code I went to look for some music to help me get into flow state (as most developers and programmers do).  Since I couldn't find a particular song on Youtube, I went to look for it on SoundCloud.  What I noticed was bizarre...SoundCloud, a well known and established website for artists was showing up on Google's seach as not secure. Typically this means that SSL is down, which can happen when SSL keys are in rotation. I figured maybe someone had forgot to rotate the keys and I was looking at a lapse in coverage. Stupid me decided to proceed to the website from the Google search and noticed that the link had redirected me to the actual website. I was not logged on and had no intention of doing so with the website in that state. Doing a little digging ChatGPT informed me that it is strange behavior for Google to actively display an insecure website as the top result for a query. That this could be the result of query poisoning, a common attack surface for hijacking sessions and getting a hold of sensitive session or personal information.  After hearing this I went to an online tool that checks a domain name to see is HSTS is active on it. I put in SoundCloud to check if HSTS was active. The online tool verifiedi that there were no problems.  That means that for some reason what I was seeing was not what everyone on the internet was seeing.  At this time I became more than intrigued, perhaps a little paranoid to the fact that my traffic has now diverted from normal traffic. I closed FireFox right away. After closing FireFox I reopened it. When I reopened it, I saw that not one Window opened, but two. In the preview for the second window that had opened, I could see a webpage active that had CMYK colored barcodes on a blank web page. I closed FireFox again. After consulting with ChatGPT on what it could be, it made sense that my session was likely hijacked, experienced a TLS Session Hijack attack and had bad code infect the browser. Looking at the Event Log on Windows, I noticed that Firefox had complained about COM+ object errors. This stood out to me because to my knowledge Firefox shouldn't have an complaints ith it's COM packages during normal runtime unless something is interfering with them. After doing a little bit of research it was noticed that FireFox has I2C pipes active for error reporting and debugging faults in the application. I quickly theorized that the browser malware may be attempting to attack my OS through these pipes and attempting to run remote COM redirected commands. With my previous limited experience, I remembered that these pipes live in the same space as SQLLocalDB, the MSSQL SQL database. SQL has long been a favored attack vector for bad actors, as the syntax is typically easy to manipulate, stub and cause errors once direct access is provided. I had not considered the database an attack surface for the longest time, because I made sure it was never allowed to connect to the outside world. If an application with access to the outside world was able to become an attack surface though, I could see how transitioning to a local SQL database would allow them to attack permissions and elevate their runtime privileges. I started furiously going through the event logs. This was not new behavior. There was a log trail that corresponded to the actor doing this multiple times, right underneath my nose. Then I saw something in the logs that scared me senseless. The actor left a string phrase that made me understand what they were after. Right there, in the event logs, was a string phrase that directly corresponded to classified material I was working on at my current job. My head was spinning, "How could they possibly know about that!?". That shifted my perspective on what I was witnessing occur. My machine was being staged as a contained spill event, where the data being on my machine would make me look suspect of treason. I tried to calm myself as best as I could and attempted to gather more information and understand the mechanism of the attack. I looked through all the COM registries and my System32 files to see if the OS was already compromised. My guess was that hijacking the browser wouldn't be enough to allow them to execute payloads remotely. They had to have some sort of hidden mechanism already on the operating system that was able to collect and process the data they were piping into my system. After scanning System32, COM redirects, CLSIDs and strange tasks that were scheduled I noticed that one library in the System32 directory did not show up on the Windows Appx Manifest. What's worse, is after removing the library I had noticed that sfc /scannow was restoring the library. It is very important to note here, that deleting this library DID NOT TRIGGER A WATCHDOG, BYTE_ISSUE or any other type of blue screen. This was bad, somehow my operating system was treating this library in my System32 as a trusted libary. copyesu. I immediately hashed the library and placed it on a usb for forensice storage. I started grabbing all the logs that I could and evidence of strange activity on my machine. Once I had all the information I started add auditing logs in event viewer to see if I could capture what was using it. With all the auditing logs setup, I had set a trap for the bad actor on my machine. Before I set the trap, I took the time to remove all of my Visual Studio installations, including SSMS. I deleted the "sa" MSSQL database and user that was setup as well. Once the software was removed I ran icacls to take ownership of the library. I did this because I had already verified that library was not on Windows App manifest, giving me the understanding that this was not a standard library. After taking ownership I waited to see who would access it. MsiInstaller. What was reponsible for installing packages on my machine was trying to take control of copyesu. I then watched as it did indeed take ownership of the library. Once it took ownership of the library, I ran icacls again to disrupt it. It took ownership back AGAIN. This was the moment I realized I wasn't just witnessing some sort of automation, but some sort of active actor that was fixing its persistence path. The second time I took control of the library, what I assume is an operator started to panic. I then watch the event log full of MsiInstaller executions. MsiInstaller started to sideload install all of the legacy dependencies that I had uninstalled prior. It was doing this because it realized that I was aware of the persistence and my attempts to disarm it by completely removing the Legacy Dependencies. When I saw this I raced to try and copy off the logs of the MsiInstaller sideloading dependencies. I viewed this as high value evidence of the implications for what I was witnessing. As soon as I tried to extract the information to a secondary hard drive and my USB I was using the exfiltrate data, unbeknowst to me was the operator corrupting my USB stick and wiping the information that was on it. I later on realized he was also ASCII souping the writes I was performing to my secondary drive. I picked up another USB and inserted it to see if I could get multiple copies of it if possible. This USB was also being kitted. Luckily, when I noticed there was an issue with my drive write speeds, I ejected the new USB and pulled it out. As soon as I did this, the attacker initiated a reboot. When I came back to the login screen, my machine was organization locked. This computer I was on was mine...not an organization.  I was given a customer help line to call and the cloud services were persisting. After removing the wireless drivers on my machine and cleaning up the machine as best as I could I noticed loopbacks at the network level that made it almost impossible for me to assert my connection was actually killed. Logging into my local account showed the same issues. I also noticed there were two SQL local accounts for telemetry. MY USB ports rooted as well. Looking USB interface from Windows showed a LinuxDeploy icon. My Windows 10 image was cooked. I took what I had and started rebuilding the machine in <a href="whisperforge-build.html">Linux Mint</a>.</p>
+</section>
+<section>
+<h2>Responsible Disclosure</h2>
+<p>I sent an email to Microsoft Security detailing what I had seen on my machine. I was expecting a quick turn around from them, like the Python disclosure. I gave them three business days since this had happened on the weekend. On the third day, nothing. Silence. Not a single reply. Not even a follow up for more information, to dispute my report or ask for clarification. "That's strange I thought." The silence could mean one of two things. Azure Devs were already aware of the situation and looking into it. There was an ongoing investigation and they weren't in a position to speak on it legally. That means that whatever this was, I was completely on my own. I didn't feel comfortable disclosing this to my work yet. I had no idea what I was even dealing with. I needed more information on it to understand what I was dealing with and how to proceed. Later on I would reach out the FBI in Massachusetts directly, as well as file a report with ic3. I got the same response with them as well.</p>
+</section>
+<section>
+<h2>Regroup. Refocus. Reasses.</h2>
+<p>I had no idea of the scope of what I was standing before. I thought the Cloud Infrastructure attack was complex, and the implications could spell disaster from a national security standpoint. The attacker was smart, resourceful and had access to resources. My instant assumption is that the timing for this attack was suspicious. Not only did the staging that I caught prior indicated that someone at work was involved in this, but this also occurred right after I openly dislosed a supply chain issue in the Python ecosystem that could spell trouble for entire software packages, companies worldwide and more importantly, the average developer just trying to make their ideas a reality. This felt more like a personal attack than a random hacker. I did then recall one of the people in the group I cited in my Supply Chain Vulnerability assessment had connections to some of the same networks. It was just a suspicion for now, but if this attack was through the cloud, it's completely possible that the attacker was targeting me across multiple domains and devices by my name. Given the level of access that was observed, it might be plausible that this actor was looking into me on different Microsoft Cloud Domain Accounts. I knew if I wanted any type of answers that I would need to look at the data that I had from the attack and look for more.</p>
+</section>
+<section>
+<h2>Forensic Analysis</h2>
+<p>The tools for reverse engineering the attack would be <a href=whisperforge-build.html>WHISPERFORGE</a> and <a href=archer-build.html>ARCHER</a>. Both were technically
+recovered derelicts, but this is exactly why they would be effective. ARCHER is purposefully sabotaged build meant to confuse and deceive the implant USB. The USB would 
+see the Windows hooks to firmware that the OEM BIOS would provide, but there would be no underlying attachment to the kernel which is Linux. In addition to this, with the NVRAM being read-only, I could guarantee whatever persistence the kit might cause, would be wiped away with a power cycle. WHISPERFORGE was not so lucky. My assumption at the time was that if the attacker had left a bad USB behind hoping that I would plug it in to another machine. Another aspect to consider is that there was already a narrative being formed for me on being a witness, that posession of the USB would implicate me as the bad actor and creator of the issue.</p>
+<p>After getting ARCHER ready, I secured all the USB ports to read only.  I plugged in the one of the USBs, no LED connectivity detected. Good. That's what I would expect from a USB being restricted on a Linux kernel. I started to go through what was left on the USB. Running <code>dd</code> on the USB took an abnormally long time. This type of behavior is consistent with Bad USBs, which hijacks normal read/write paths on the disk to allow for modified behavior. This one however seemed to indicate USB stick embedded firmware corruption. A USB planning to work off of the corrupted sectors on the USB stick or autoplay behavior is typically thwarted by controlling the USB SATA port and disabling those behaviors. This brings us to the other USB. The other USB was active immediately after being plugged in. What do I mean by active? The USB LED indicates activity on the stick to alert uses if writes are being performed. This is done to help users not accidentally remove the USB during a write operation that could leave the USB corrupted. This USB once plugged into the port was <b>glowing red</b>. It's firmware was continuously performing some sort of operations. Worried, I immediately removed the USB stick. I performed some sanity checks to insure I didn't corrupt ARCHER. I dumped the SPI information to see if there was anything out of the ordinary. There were in fact new entries that didn't make sense.</p>
+<table border="1" cellspacing="0" cellpadding="6">
+								<thead>
+									<tr>
+										<th>Signature Description</th>
+										<th>Signature Name</th>
+										<th>Extraction Utility</th>
+									</tr>
+								</thead>
+								<tbody>
+									<tr>
+										<td>7-zip archive data </td>
+										<td>7zip</td>
+										<td>7z</td>
+									</tr>
+									<tr>
+										<td>AES S-Box</td>
+										<td>aes_sbox</td>
+										<td>None</td>
+									</tr>
+									<tr>
+										<td>Android sparse image</td>
+										<td>android_sparse</td>
+										<td>Built-in</td>
+									</tr>
+                                    <tr>
+										<td>Apple Disk iMaGe</td>
+										<td>dmg</td>
+										<td>dmg2img</td>
+									</tr>
+                                    <tr>
+										<td>APple File System</td>
+										<td>apfs</td>
+										<td>7zzs</td>
+									</tr>
+                                    <tr>
+										<td>Arcadyan obfuscated LZMA</td>
+										<td>arcadyan</td>
+										<td>Built-in</td>
+									</tr>
+                                    <tr>
+										<td>Autel obfuscated firmware</td>
+										<td>autel</td>
+										<td>Built-in</td>
+									</tr>
+                                    <tr>
+										<td>BIN firmware header</td>
+										<td>binhdr</td>
+										<td>None</td>
+									</tr>
+                                    <tr>
+										<td>BTRFS file system</td>
+										<td>btrfs</td>
+										<td>None</td>
+									</tr>
+                                    <tr>
+										<td>bzip2 compressed data</td>
+										<td>bzip2</td>
+										<td>Built-in</td>
+									</tr>
+                                    <tr>
+										<td>CFE bootloader</td>
+										<td>cfe</td>
+										<td>None</td>
+									</tr>
+                                    <tr>
+										<td>CHK firmware header</td>
+										<td>chk</td>
+										<td>None</td>
+									</tr>
+                                    <tr>
+										<td>compress'd data</td>
+										<td>compressd</td>
+										<td>7z</td>
+									</tr>
+                                    <tr>
+										<td>CHK firmware header</td>
+										<td>chk</td>
+										<td>7z</td>
+									</tr>
+                                    <tr>
+										<td>CPIO ASCII archive</td>
+										<td>cpio</td>
+										<td>7z</td>
+									</tr>
+                                    <tr>
+										<td>CramFS filesystem</td>
+										<td>cramfs</td>
+										<td>7z</td>
+									</tr>
+                                    <tr>
+										<td>CRC32 polynomial table</td>
+										<td>crc32</td>
+										<td>None</td>
+									</tr>
+                                    <tr>
+										<td>Debian package file</td>
+										<td>dtb</td>
+										<td>dtc</td>
+									</tr>
+                                    <tr>
+										<td>Device tree blob (DTB)</td>
+										<td>deb</td>
+										<td>7z</td>
+									</tr>
+                                    <tr>
+										<td>DLOB firmware header</td>
+										<td>dlob</td>
+										<td>None</td>
+									</tr>
+                                    <tr>
+										<td>EFI Global Partition Table</td>
+										<td>deb</td>
+										<td>7z</td>
+									</tr>
+                                    <tr>
+										<td>Intel serial flash for PCH ROM</td>
+										<td>pchrom</td>
+										<td>uefi-firmware-parser</td>
+									</tr>
+                                    <tr>
+										<td>eCos kernel exception handler</td>
+										<td>efigpt</td>
+										<td>7z</td>
+									</tr>
+                                    <tr>
+										<td>EXT filesystem</td>
+										<td>ext</td>
+										<td>tsk_recover</td>
+									</tr>
+                                    <tr>
+										<td>FAT file system</td>
+										<td>fat</td>
+										<td>tsk_recover</td>
+									</tr>
+                                    <tr>
+										<td>GIF image</td>
+										<td>gif</td>
+										<td>Built-in</td>
+									</tr>
+                                    <tr>
+										<td>GPG signed file</td>
+										<td>gpg_signed</td>
+										<td>Built-in</td>
+									</tr>
+                                    <tr>
+										<td>gzip compressed data</td>
+										<td>gzip</td>
+										<td>Built-in</td>
+									</tr>
+                                    <tr>
+										<td>HP Printer Job Language data</td>
+										<td>pjl</td>
+										<td>None</td>
+									</tr>
+                                    <tr>
+										<td>Intel serial flash for PCH ROM</td>
+										<td>pchrom</td>
+										<td>uefi-firmware-parser</td>
+									</tr>
+                                    <tr>
+										<td>ISO9660 primary volume</td>
+										<td>iso9660</td>
+										<td>tsk_recover</td>
+									</tr>
+                                    <tr>
+										<td>JBOOT firmware header</td>
+										<td>jboot_arm</td>
+										<td>None</td>
+									</tr>
+                                    <tr>
+										<td>JBOOT SCH2 header</td>
+										<td>jboot_sch2 </td>
+										<td>Built-in</td>
+									</tr>
+                                    <tr>
+										<td>JBOOT STAG header</td>
+										<td>jboot_stag</td>
+										<td>None</td>
+									</tr>
+                                    <tr>
+										<td>JFFS2 filesystem</td>
+										<td>jffs2</td>
+										<td>jefferson</td>
+									</tr>
+                                    <tr>
+										<td>JPEG image</td>
+										<td>jpeg</td>
+										<td>Built-in</td>
+									</tr>
+                                    <tr>
+										<td>JFFS2 filesystem</td>
+										<td>jffs2</td>
+										<td>jefferson</td>
+									</tr>
+                                    <tr>
+										<td>Linux kernel ARM64 boot image</td>
+										<td>linux_arm64_boot_image</td>
+										<td>None</td>
+									</tr>
+                                    <tr>
+										<td>Linux kernel boot image</td>
+										<td>linux_boot_image</td>
+										<td>None</td>
+									</tr>
+                                    <tr>
+										<td>Linux kernel version</td>
+										<td>linux_kernel</td>
+										<td>vmlinux-to-elf</td>
+									</tr>
+                                    <tr>
+										<td>LUKS header</td>
+										<td>luks</td>
+										<td>None</td>
+									</tr>
+                                    <tr>
+										<td>LZ4 compressed data</td>
+										<td>lz4</td>
+										<td>lz4</td>
+									</tr>
+                                    <tr>
+										<td>LZFSE compressed data</td>
+										<td>lzfse</td>
+										<td>lzfse</td>
+									</tr>
+                                    <tr>
+										<td>LZMA compressed data</td>
+										<td>lzma</td>
+										<td>Built-in</td>
+									</tr>
+                                    <tr>
+										<td>LZO compressed data</td>
+										<td>lzop</td>
+										<td>lzop</td>
+									</tr>
+                                    <tr>
+										<td>Microsoft Cabinet archive</td>
+										<td>cab</td>
+										<td>cabextract</td>
+									</tr>
+                                    <tr>
+										<td>Motorola S-record</td>
+										<td>srecord</td>
+										<td>srec2bin</td>
+									</tr>
+                                    <tr>
+										<td>Motorola S-record (generic) </td>
+										<td>srecord_generic  </td>
+										<td>srec2bin</td>
+									</tr>
+                                    <tr>
+										<td>NTFS partition</td>
+										<td>ntfs</td>
+										<td>tsk_recover</td>
+									</tr>
+                                    <tr>
+										<td>OpenSSL encryption</td>
+										<td>openssl</td>
+										<td>None</td>
+									</tr>
+                                    <tr>
+										<td>PackImg firmware header</td>
+										<td>packimg</td>
+										<td>None</td>
+									</tr>
+                                    <tr>
+										<td>OPcap-NG capture file </td>
+										<td>pcapng</td>
+										<td>Built-in</td>
+									</tr>
+                                    <tr>
+										<td>PDF document</td>
+										<td>pdf</td>
+										<td>None</td>
+									</tr>
+                                    <tr>
+										<td>PEM certificate</td>
+										<td>pem_certificate</td>
+										<td>Built-in</td>
+									</tr>
+                                    <tr>
+										<td>PEM private key</td>
+										<td>pem_private_key</td>
+										<td>Built-in</td>
+									</tr>
+                                    <tr>
+										<td>PEM public key</td>
+										<td>pem_public_key</td>
+										<td>Built-in</td>
+									</tr>
+                                    <tr>
+										<td>PNG image</td>
+										<td>png</td>
+										<td>Built-in</td>
+									</tr>
+                                    <tr>
+										<td>POSIX tar archive</td>
+										<td>tarball</td>
+										<td>tar</td>
+									</tr>
+                                    <tr>
+										<td>QNX IFS image</td>
+										<td>qnx_ifs</td>
+										<td>dumpifs</td>
+									</tr>
+                                    <tr>
+										<td>RAR archive</td>
+										<td>rar</td>
+										<td>unrar</td>
+									</tr>
+                                    <tr>
+										<td>RIFF image</td>
+										<td>riff</td>
+										<td>Built-in</td>
+									</tr>
+                                    <tr>
+										<td>RSA encrypted session key</td>
+										<td>rsa</td>
+										<td>None</td>
+									</tr>
+                                    <tr>
+										<td>RTK firmware header</td>
+										<td>rtk</td>
+										<td>None</td>
+									</tr>
+                                    <tr>
+										<td>SEAMA firmware header</td>
+										<td>seama</td>
+										<td>None</td>
+									</tr>
+                                    <tr>
+										<td>RomFS filesystem</td>
+										<td>romfs</td>
+										<td>Built-in</td>
+									</tr>
+                                    <tr>
+										<td>SHA256 hash constants</td>
+										<td>sha256</td>
+										<td>None</td>
+									</tr>
+                                    <tr>
+										<td>SquashFS file system</td>
+										<td>squashfs</td>
+										<td>sasquatch</td>
+									</tr>
+                                    <tr>
+										<td>SVG image</td>
+										<td>svg</td>
+										<td>Built-in</td>
+									</tr>
+                                    <tr>
+										<td>TP-Link firmware header</td>
+										<td>tplink</td>
+										<td>None</td>
+									</tr>
+                                    <tr>
+										<td>TP-Link RTOS firmware</td>
+										<td>tplink_rtos</td>
+										<td>None</td>
+									</tr>
+                                    <tr>
+										<td>TRX firmware image</td>
+										<td>trx</td>
+										<td>Built-in</td>
+									</tr>
+                                    <tr>
+										<td>UBI image</td>
+										<td>ubi</td>
+										<td>ubireader_extract_images</td>
+									</tr>
+                                    <tr>
+										<td>UBIFS image</td>
+										<td>ubifs</td>
+										<td>ubireader_extract_files</td>
+									</tr>
+                                    <tr>
+										<td>UEFI capsule image</td>
+										<td>uefi_capsule</td>
+										<td>uefi-firmware-parser</td>
+									</tr>
+                                    <tr>
+										<td>UEFI PI firmware volume</td>
+										<td>uefi_pi_volume</td>
+										<td>uefi-firmware-parser</td>
+									</tr>
+                                    <tr>
+										<td>uImage firmware image</td>
+										<td>uimage</td>
+										<td>Built-in</td>
+									</tr>
+                                    <tr>
+										<td>VxWorks symbol table</td>
+										<td>vxworks_symtab</td>
+										<td>Built-in</td>
+									</tr>
+                                    <tr>
+										<td>VxWorks WIND kernel version</td>
+										<td>wind_kernel</td>
+										<td>None</td>
+									</tr>
+                                    <tr>
+										<td>Windows CE binary image</td>
+										<td>wince</td>
+										<td>Built-in</td>
+									</tr>
+                                    <tr>
+										<td>Windows PE binary</td>
+										<td>pe</td>
+										<td>None</td>
+									</tr>
+                                    <tr>
+										<td>XZ compressed data</td>
+										<td>xz</td>
+										<td>Built-in</td>
+									</tr>
+                                    <tr>
+										<td>YAFFSv2 filesystem</td>
+										<td>yaffs</td>
+										<td>unyaffs</td>
+									</tr>
+                                    <tr>
+										<td>ZIP archive</td>
+										<td></td>
+										<td>zip7z</td>
+									</tr>
+                                    <tr>
+										<td>Zlib compressed file</td>
+										<td>zlib</td>
+										<td>Built-in</td>
+									</tr>
+                                    <tr>
+										<td>ZSTD compressed data</td>
+										<td>zstd</td>
+										<td>zstd</td>
+									</tr>
+								</tbody>
+							</table>
+<h3>IMPORTANT NOTE:</h3>
+<p>It's important to note that these are not "Built-in". Somehow this firmware was put here. It didn't come from the minimal Arch install ISO. It's not uncommon for certain OEMs to preload firmware for different use cases, but those would be flagged as coming with the board. There are a couple of items that I think are highly suspect.</p>
+                            <table border="1" cellspacing="0" cellpadding="6">
+								<thead>
+									<tr>
+										<th>Signature Description</th>
+										<th>Signature Name</th>
+										<th>Extraction Utility</th>
+									</tr>
+								</thead>
+                                    <tr>
+										<td>UEFI capsule image</td>
+										<td>uefi_capsule</td>
+										<td>uefi-firmware-parser</td>
+									</tr>
+                                    <tr>
+										<td>UEFI PI firmware volume</td>
+										<td>uefi_pi_volume</td>
+										<td>uefi-firmware-parser</td>
+									</tr>
+                                    <tr>
+										<td>TP-Link firmware header</td>
+										<td>tplink</td>
+										<td>None</td>
+									</tr>
+                                    <tr>
+										<td>TP-Link RTOS firmware</td>
+										<td>tplink_rtos</td>
+										<td>None</td>
+									</tr>
+                                    <tr>
+										<td>SquashFS file system</td>
+										<td>squashfs</td>
+										<td>sasquatch</td>
+									</tr>
+                                    <tr>
+										<td>Windows CE binary image</td>
+										<td>wince</td>
+										<td>Built-in</td>
+									</tr>
+                                    <tr>
+										<td>RomFS filesystem</td>
+										<td>romfs</td>
+										<td>Built-in</td>
+									</tr>
+                                    <tr>
+										<td>RSA encrypted session key</td>
+										<td>rsa</td>
+										<td>None</td>
+									</tr>
+                                    <tr>
+										<td>DOS Master Boot Record</td>
+										<td>mbr</td>
+										<td>Built-in</td>
+									</tr>
+                                    <tr>
+										<td>EFI Global Partition Table</td>
+										<td>deb</td>
+										<td>7z</td>
+									</tr>
+                                    <tr>
+										<td>Microsoft Cabinet archive</td>
+										<td>cab</td>
+										<td>cabextract</td>
+									</tr>
+                                    <tr>
+										<td>Intel serial flash for PCH ROM</td>
+										<td>pchrom</td>
+										<td>uefi-firmware-parser</td>
+									</tr>
+                                    <tr>
+										<td>eCos kernel exception handler</td>
+										<td>efigpt</td>
+										<td>7z</td>
+									</tr>
+								</tbody>
+							</table>
+<p>This indicated that some poisoning of the firmware occurred after the fresh Arch install. The only thing that had changed was I had plugged in the suspicious USB.<p>
+<h3>Pivoting After Identifying the Payload</h3>
+<p>Observing that the USB was active regardless of mount states in the kernel, was continuously active when powered and somehow caused the firmware list to change were all signs of the nature of the USB. This USB had modified USB firmware to bypass autoplay/automount quarantines. In addition, it was somehow using the bus power to excute on its own. This is tradecraft technology. It's goal was to install firmware on the machine regardless of if the kernel was aware. Now I was curious though, why didn't the other USB also auto execute? Why was this other device different from the one I witnessed? Before I unplugged the device, there was one thing I observed on it: "nouveau net driver".</p>
+<h3>The USB That Failed To Flash</h3>
+<p>I plugged in the non-responsive USB again. I decided to pull the memory off of the USB to see if there were any artifacts that could tell me more.
+Reading the USB was abysmally slow. It definitely corroborated with the theory that the USB's I/O firmware had been tampered with. After pulling the image off the USB, I noticed that most of the sectors were blank, zeroed out. As if it had just been zeroed or was previously formatted. Both of these theories are likely true.</p>
+<h3>Sector Based Execution</h3>
+<p>After pulling the memory, the sectors I could see, 512KB each, were Sectors 0, 1, 2, 6, 7, 8, 12, and 2398. I used a simple bash script to check the usb image:</p>
+<blockquote class=quote><code>
+#!/bin/bash<br>
+IMAGE="usb_image.dd"<br>
+SECTOR_SIZE=512<br>
+SECTOR_COUNT=10000<br>
+echo "Scanning $IMAGE for non-zero sectors..."<br>
+<br>
+i=0<br>
+<br>
+while [ $i -lt $SECTOR_COUNT ]; do<br>
+	sector=$(dd if="$IMAGE" bs=$SECTOR_SIZE skip=$i count=1 status=none | hexdump -v -e '/1 "%02X"')<br>
+<br>
+	if [[ "$sector" =~ ^(00)+$ ]]; then<br>
+		: <br>
+	else<br>
+		echo "Sector $i: NON-ZERO"<br>
+	fi<br>
+<br>
+	i=$((i+1))<br>
+done<br>
+<br>
+echo "Scan Complete."
+</blockquote></code>
+<p>This resulted in hexdump files of the all sectors that were found holding binary data.  These were the sectors that I mentioned prior.
+The blobs that were available were run through <code>strings</code> to see if any plain text could be found in the blobs as a starting point.</p>
+<p><code>NO N</code> and <code>X\x90MSDOS5.0</code></p>
+<p>Now that's interesting! It also coincides with a lot of of what I was seeing in the SPI information suggesting firmware and drivers I didn't install were present.
+What this suggests that somehow, MSODOS5.0 was in play. <code>X\x90</code> was likely a delimeter or sequence of some kind, perhaps meaning e(x)ecute.</p>
+<p>On a hunch, knowing MSDOS5.0 was in play. I moved to use <code>radare2</code> and see if there was any code in the blobs or an executable. with radare2 I used:</p>
+<code>r2 -a x86 -b 64 -n sector.bin
+aaa<br>
+pd 100 disassembly.bin</code>
+<p>I did this for every single sector blob that was available. Even though the sectors were spaced apart from each other, I noticed that compiling them altogether formed a linear code assembly of execution. The assembly code sectors combined:</p>
+<details><code><pre 9>
+┌ 152: fcn.00000000 (int64_t arg2, int64_t arg3);<br>
+│ `- args(rsi, rdx)<br>
+│      ┌──< 0x00000000      eb58           jmp 0x5a<br>
+       │    0x00000002      90             nop<br>
+       │    0x00000003      4d53           push r11<br>
+       │    0x00000005      444f53         push r11<br>
+       │    0x00000008      352e300002     xor eax, 0x200302e<br>
+       │    0x0000000d      105e09         adc byte [rsi + 9], bl<br>
+       │    0x00000010      0200           add al, byte [rax]<br>
+       │    0x00000012      0000           add byte [rax], al<br>
+       │    0x00000014      00f8           add al, bh<br>
+       │    0x00000016      0000           add byte [rax], al<br>
+       │    0x00000018      3f             invalid<br>
+       │    0x00000019      00ff           add bh, bh<br>
+       │    0x0000001b      0000           add byte [rax], al<br>
+       │    0x0000001d      0000           add byte [rax], al<br>
+       │    0x0000001f      0000           add byte [rax], al<br>
+       │    0x00000021      00db           add bl, bl<br>
+       │    0x00000023      01513b         add dword [rcx + 0x3b], edx<br>
+       │    0x00000026      0000           add byte [rax], al<br>
+       │    0x00000028      0000           add byte [rax], al<br>
+       │    0x0000002a      0000           add byte [rax], al<br>
+       │    0x0000002c      0200           add al, byte [rax]<br>
+       │    0x0000002e      0000           add byte [rax], al<br>
+       │    0x00000030      0100           add dword [rax], eax<br>
+       │    0x00000032      06             invalid<br>
+       │    0x00000033      0000           add byte [rax], al<br>
+       │    0x00000035      0000           add byte [rax], al<br>
+       │    0x00000037      0000           add byte [rax], al<br>
+       │    0x00000039      0000           add byte [rax], al<br>
+       │    0x0000003b      0000           add byte [rax], al<br>
+       │    0x0000003d      0000           add byte [rax], al<br>
+       │    ; DATA XREF from fcn.00000000 @ 0x9e(r)<br>
+       │    0x0000003f      00800029c670   add byte [rax + 0x70c62900], al ; [0x70c62900:1]=255<br>
+       │    0x00000045      3ebc4e4f204e   mov esp, 0x4e204f4e         ; 'NO N'<br>
+       │    0x0000004b      414d452020     and byte [r8], r12b<br>
+       │    0x00000050      2020           and byte [rax], ah<br>
+       │    0x00000052      464154         push r12<br>
+       │    0x00000055      3332           xor esi, dword [rdx]<br>
+       │    0x00000057      2020           and byte [rax], ah<br>
+       │    0x00000059  ~   2033           and byte [rbx], dh<br>
+│      │    ; CODE XREF from fcn.00000000 @ <br>
+│      └──> 0x0000005a      33c9           xor ecx, ecx<br>
+│           0x0000005c      8ed1           mov ss, ecx<br>
+│           0x0000005e      bcf47b8ec1     mov esp, 0xc18e7bf4<br>
+│           0x00000063      8ed9           mov ds, ecx<br>
+│      ┌──> 0x00000065      bd007c884e     mov ebp, 0x4e887c00<br>
+│      ╎    0x0000006a      028a5640b441   add cl, byte [rdx + 0x41b44056] ; arg3<br>
+│      ╎    0x00000070      bbaa55cd13     mov ebx, 0x13cd55aa<br>
+│     ┌───< 0x00000075      7210           jb 0x87<br>
+│     │╎    0x00000077      81fb55aa750a   cmp ebx, 0xa75aa55<br>
+│     │╎    0x0000007d      f6c101         test cl, 1                  ; "X\x90MSDOS5.0"<br>
+│    ┌────< 0x00000080      7405           je 0x87<br>
+│    ││╎    0x00000082      fe4602         inc byte [rsi + 2]          ; arg2<br>
+│   ┌─────< 0x00000085      eb2d           jmp 0xb4<br>
+│   │└└───> 0x00000087      8a5640         mov dl, byte [rsi + 0x40]   ; arg2<br>
+│   │  ╎    0x0000008a      b408           mov ah, 8<br>
+│   │ ┌───> 0x0000008c      cd13           int 0x13<br>
+│   │┌────< 0x0000008e      7305           jae 0x95<br>
+│  ┌──────> 0x00000090      b9ffff8af1     mov ecx, 0xf18affff<br>
+│  ╎│└────> 0x00000095      660fb6c6       movzx ax, dh<br>
+│  ╎│ ╎╎    0x00000099      40660fb6d1     movzx dx, cl<br>
+│  ╎│ ╎╎    0x0000009e      80e23f         and dl, 0x3f<br>
+│  ╎│ ╎╎    0x000000a1      f7e2           mul edx<br>
+│  ╎│ ╎╎    0x000000a3      86cd           xchg ch, cl<br>
+│  ╎│ ╎╎    0x000000a5      c0ed06         shr ch, 6<br>
+│  ╎│ ╎╎    0x000000a8      41660fb7c9     movzx cx, cx<br>
+│  ╎│ ╎╎    0x000000ad      66f7e1         mul cx<br>
+│  ╎│ ╎╎    0x000000b0      668946f8       mov word [rsi - 8], ax      ; arg2<br>
+│  ╎│ ╎╎    ; CODE XREF from fcn.00000000 @ 0x85(x)<br>
+│  ╎└─────> 0x000000b4      837e1600       cmp dword [rsi + 0x16], 0   ; arg2<br>
+│  ╎ ┌────< 0x000000b8      7538           jne 0xf2<br>
+│  ╎ │╎╎    0x000000ba      837e2a00       cmp dword [rsi + 0x2a], 0   ; arg2<br>
+│  ╎┌─────< 0x000000be      7732           ja 0xf2<br>
+│  ╎││╎╎    0x000000c0      668b461c       mov ax, word [rsi + 0x1c]   ; arg2<br>
+│  ╎││╎╎    0x000000c4      6683c00c       add ax, 0xc<br>
+│  ╎││╎╎    0x000000c8      bb0080b901     mov ebx, 0x1b98000<br>
+│  ╎││╎╎    0x000000cd      00e8           add al, ch<br>
+│  ╎││╎╎    0x000000cf      2b00           sub eax, dword [rax]<br>
+│  ╎││╎╎┌─< 0x000000d1      e92c03a0fa     jmp 0xfffffffffaa00402<br>
+   ╎││└───< 0x000000d6      7db4           jge 0x8c                    ; fcn.00000000+0x8c<br>
+   ╎││ └──< 0x000000d8      7d8b           jge 0x65                    ; fcn.00000000+0x65<br>
+   ╎││  │   0x000000da      f0             invalid<br>
+   ╎││  ┌─> 0x000000db      ac             lodsb al, byte [rsi]<br>
+  ╎││  ╎│   0x000000dc      84c0           test al, al<br>
+   ╎││ ┌──< 0x000000de      7417           je 0xf7                     ; fcn.00000000+0xf7<br>
+  ╎││ │╎│   0x000000e0      3cff           cmp al, 0xff<br>
+   ╎││┌───< 0x000000e2      7409           je 0xed<br>
+  ╎││││╎│   0x000000e4      b40e           mov ah, 0xe<br>
+  ╎││││╎│   0x000000e6      bb0700cd10     mov ebx, 0x10cd0007<br>
+   ╎││││└─< 0x000000eb      ebee           jmp 0xdb<br>
+   ╎││└───> 0x000000ed  ~   a0fb7debe5..   movabs al, byte [0xeb7df9a0e5eb7dfb]<br>
+│  ╎└└────> 0x000000f2      a0f97debe0..   movabs al, byte [0xcd16cd98e0eb7df9]<br>
+│       │   0x000000fb      196660         sbb dword [rsi + 0x60], esp ; arg2<br>
+│       │   0x000000fe      807e0200       cmp byte [rsi + 2], 0       ; arg2<br>
+│       │   0x00000102      0f842000666a   je 0x6a660128<br>
+│       │   0x00000108      006650         add byte [rsi + 0x50], ah<br>
+└       │   0x0000010b      06             invalid<br>
+        │   0x0000010c      53             push rbx<br>
+        │   0x0000010d      66681000       push 0x10<br>
+        │   0x00000111      0100           add dword [rax], eax<br>
+        │   0x00000113      b442           mov ah, 0x42                ; 'B'<br>
+        │   0x00000115      8a5640         mov dl, byte [rsi + 0x40]<br>
+        │   0x00000118      8bf4           mov esi, esp<br>
+        │   0x0000011a      cd13           int 0x13<br>
+┌ 3: fcn.00000000 (int64_t arg3);<br>
+│ `- args(rdx)<br>
+│           0x00000000      52             push rdx                    ; arg3<br>
+│           0x00000001      52             push rdx                    ; arg3<br>
+└           0x00000002      61             invalid<br>
+            0x00000003      410000         add byte [r8], al<br>
+            0x00000006      0000           add byte [rax], al<br>
+            0x00000008      0000           add byte [rax], al<br>
+            0x0000000a      0000           add byte [rax], al<br>
+            0x0000000c      0000           add byte [rax], al<br>
+            0x0000000e      0000           add byte [rax], al<br>
+            0x00000010      0000           add byte [rax], al<br>
+            0x00000012      0000           add byte [rax], al<br>
+            0x00000014      0000           add byte [rax], al<br>
+            0x00000016      0000           add byte [rax], al<br>
+            0x00000018      0000           add byte [rax], al<br>
+            0x0000001a      0000           add byte [rax], al<br>
+            0x0000001c      0000           add byte [rax], al<br>
+            0x0000001e      0000           add byte [rax], al<br>
+            0x00000020      0000           add byte [rax], al<br>
+            0x00000022      0000           add byte [rax], al<br>
+            0x00000024      0000           add byte [rax], al<br>
+            0x00000026      0000           add byte [rax], al<br>
+            0x00000028      0000           add byte [rax], al<br>
+            0x0000002a      0000           add byte [rax], al<br>
+            0x0000002c      0000           add byte [rax], al<br>
+            0x0000002e      0000           add byte [rax], al<br>
+            0x00000030      0000           add byte [rax], al<br>
+            0x00000032      0000           add byte [rax], al<br>
+            0x00000034      0000           add byte [rax], al<br>
+            0x00000036      0000           add byte [rax], al<br>
+            0x00000038      0000           add byte [rax], al<br>
+            0x0000003a      0000           add byte [rax], al<br>
+            0x0000003c      0000           add byte [rax], al<br>
+            0x0000003e      0000           add byte [rax], al<br>
+            0x00000040      0000           add byte [rax], al<br>
+            0x00000042      0000           add byte [rax], al<br>
+            0x00000044      0000           add byte [rax], al<br>
+            0x00000046      0000           add byte [rax], al<br>
+            0x00000048      0000           add byte [rax], al<br>
+            0x0000004a      0000           add byte [rax], al<br>
+            0x0000004c      0000           add byte [rax], al<br>
+            0x0000004e      0000           add byte [rax], al<br>
+            0x00000050      0000           add byte [rax], al<br>
+            0x00000052      0000           add byte [rax], al<br>
+            0x00000054      0000           add byte [rax], al<br>
+            0x00000056      0000           add byte [rax], al<br>
+            0x00000058      0000           add byte [rax], al<br>
+            0x0000005a      0000           add byte [rax], al<br>
+            0x0000005c      0000           add byte [rax], al<br>
+            0x0000005e      0000           add byte [rax], al<br>
+            0x00000060      0000           add byte [rax], al<br>
+            0x00000062      0000           add byte [rax], al<br>
+            0x00000064      0000           add byte [rax], al<br>
+            0x00000066      0000           add byte [rax], al<br>
+            0x00000068      0000           add byte [rax], al<br>
+            0x0000006a      0000           add byte [rax], al<br>
+            0x0000006c      0000           add byte [rax], al<br>
+            0x0000006e      0000           add byte [rax], al<br>
+            0x00000070      0000           add byte [rax], al<br>
+            0x00000072      0000           add byte [rax], al<br>
+            0x00000074      0000           add byte [rax], al<br>
+            0x00000076      0000           add byte [rax], al<br>
+            0x00000078      0000           add byte [rax], al<br>
+            0x0000007a      0000           add byte [rax], al<br>
+            0x0000007c      0000           add byte [rax], al<br>
+            0x0000007e      0000           add byte [rax], al<br>
+            0x00000080      0000           add byte [rax], al<br>
+            0x00000082      0000           add byte [rax], al<br>
+            0x00000084      0000           add byte [rax], al<br>
+            0x00000086      0000           add byte [rax], al<br>
+            0x00000088      0000           add byte [rax], al<br>
+            0x0000008a      0000           add byte [rax], al<br>
+            0x0000008c      0000           add byte [rax], al<br>
+            0x0000008e      0000           add byte [rax], al<br>
+            0x00000090      0000           add byte [rax], al<br>
+            0x00000092      0000           add byte [rax], al<br>
+            0x00000094      0000           add byte [rax], al<br>
+            0x00000096      0000           add byte [rax], al<br>
+            0x00000098      0000           add byte [rax], al<br>
+            0x0000009a      0000           add byte [rax], al<br>
+            0x0000009c      0000           add byte [rax], al<br>
+            0x0000009e      0000           add byte [rax], al<br>
+            0x000000a0      0000           add byte [rax], al<br>
+            0x000000a2      0000           add byte [rax], al<br>
+            0x000000a4      0000           add byte [rax], al<br>
+            0x000000a6      0000           add byte [rax], al<br>
+            0x000000a8      0000           add byte [rax], al<br>
+            0x000000aa      0000           add byte [rax], al<br>
+            0x000000ac      0000           add byte [rax], al<br>
+            0x000000ae      0000           add byte [rax], al<br>
+            0x000000b0      0000           add byte [rax], al<br>
+            0x000000b2      0000           add byte [rax], al<br>
+            0x000000b4      0000           add byte [rax], al<br>
+            0x000000b6      0000           add byte [rax], al<br>
+            0x000000b8      0000           add byte [rax], al<br>
+            0x000000ba      0000           add byte [rax], al<br>
+            0x000000bc      0000           add byte [rax], al<br>
+            0x000000be      0000           add byte [rax], al<br>
+            0x000000c0      0000           add byte [rax], al<br>
+            0x000000c2      0000           add byte [rax], al<br>
+            0x000000c4      0000           add byte [rax], al<br>
+┌ 512: fcn.00000000 ();<br>
+│           0x00000000      0000           add byte [rax], al<br>
+│           0x00000002      0000           add byte [rax], al<br>
+│           0x00000004      0000           add byte [rax], al<br>
+│           0x00000006      0000           add byte [rax], al<br>
+│           0x00000008      0000           add byte [rax], al<br>
+│           0x0000000a      0000           add byte [rax], al<br>
+│           0x0000000c      0000           add byte [rax], al<br>
+│           0x0000000e      0000           add byte [rax], al<br>
+│           0x00000010      0000           add byte [rax], al<br>
+│           0x00000012      0000           add byte [rax], al<br>
+│           0x00000014      0000           add byte [rax], al<br>
+│           0x00000016      0000           add byte [rax], al<br>
+│           0x00000018      0000           add byte [rax], al<br>
+│           0x0000001a      0000           add byte [rax], al<br>
+│           0x0000001c      0000           add byte [rax], al<br>
+│           0x0000001e      0000           add byte [rax], al<br>
+│           0x00000020      0000           add byte [rax], al<br>
+│           0x00000022      0000           add byte [rax], al<br>
+│           0x00000024      0000           add byte [rax], al<br>
+│           0x00000026      0000           add byte [rax], al<br>
+│           0x00000028      0000           add byte [rax], al<br>
+│           0x0000002a      0000           add byte [rax], al<br>
+│           0x0000002c      0000           add byte [rax], al<br>
+│           0x0000002e      0000           add byte [rax], al<br>
+│           0x00000030      0000           add byte [rax], al<br>
+│           0x00000032      0000           add byte [rax], al<br>
+│           0x00000034      0000           add byte [rax], al<br>
+│           0x00000036      0000           add byte [rax], al<br>
+│           0x00000038      0000           add byte [rax], al<br>
+│           0x0000003a      0000           add byte [rax], al<br>
+│           0x0000003c      0000           add byte [rax], al<br>
+│           0x0000003e      0000           add byte [rax], al<br>
+│           0x00000040      0000           add byte [rax], al<br>
+│           0x00000042      0000           add byte [rax], al<br>
+│           0x00000044      0000           add byte [rax], al<br>
+│           0x00000046      0000           add byte [rax], al<br>
+│           0x00000048      0000           add byte [rax], al<br>
+│           0x0000004a      0000           add byte [rax], al<br>
+│           0x0000004c      0000           add byte [rax], al<br>
+│           0x0000004e      0000           add byte [rax], al<br>
+│           0x00000050      0000           add byte [rax], al<br>
+│           0x00000052      0000           add byte [rax], al<br>
+│           0x00000054      0000           add byte [rax], al<br>
+│           0x00000056      0000           add byte [rax], al<br>
+│           0x00000058      0000           add byte [rax], al<br>
+│           0x0000005a      0000           add byte [rax], al<br>
+│           0x0000005c      0000           add byte [rax], al<br>
+│           0x0000005e      0000           add byte [rax], al<br>
+│           0x00000060      0000           add byte [rax], al<br>
+│           0x00000062      0000           add byte [rax], al<br>
+│           0x00000064      0000           add byte [rax], al<br>
+│           0x00000066      0000           add byte [rax], al<br>
+│           0x00000068      0000           add byte [rax], al<br>
+│           0x0000006a      0000           add byte [rax], al<br>
+│           0x0000006c      0000           add byte [rax], al<br>
+│           0x0000006e      0000           add byte [rax], al<br>
+│           0x00000070      0000           add byte [rax], al<br>
+│           0x00000072      0000           add byte [rax], al<br>
+│           0x00000074      0000           add byte [rax], al<br>
+│           0x00000076      0000           add byte [rax], al<br>
+│           0x00000078      0000           add byte [rax], al<br>
+│           0x0000007a      0000           add byte [rax], al<br>
+│           0x0000007c      0000           add byte [rax], al<br>
+│           0x0000007e      0000           add byte [rax], al<br>
+│           0x00000080      0000           add byte [rax], al<br>
+│           0x00000082      0000           add byte [rax], al<br>
+│           0x00000084      0000           add byte [rax], al<br>
+│           0x00000086      0000           add byte [rax], al<br>
+│           0x00000088      0000           add byte [rax], al<br>
+│           0x0000008a      0000           add byte [rax], al<br>
+│           0x0000008c      0000           add byte [rax], al<br>
+│           0x0000008e      0000           add byte [rax], al<br>
+│           0x00000090      0000           add byte [rax], al<br>
+│           0x00000092      0000           add byte [rax], al<br>
+│           0x00000094      0000           add byte [rax], al<br>
+│           0x00000096      0000           add byte [rax], al<br>
+│           0x00000098      0000           add byte [rax], al<br>
+│           0x0000009a      0000           add byte [rax], al<br>
+│           0x0000009c      0000           add byte [rax], al<br>
+│           0x0000009e      0000           add byte [rax], al<br>
+│           0x000000a0      0000           add byte [rax], al<br>
+│           0x000000a2      0000           add byte [rax], al<br>
+│           0x000000a4      0000           add byte [rax], al<br>
+│           0x000000a6      0000           add byte [rax], al<br>
+│           0x000000a8      0000           add byte [rax], al<br>
+│           0x000000aa      0000           add byte [rax], al<br>
+│           0x000000ac      0000           add byte [rax], al<br>
+│           0x000000ae      0000           add byte [rax], al<br>
+│           0x000000b0      0000           add byte [rax], al<br>
+│           0x000000b2      0000           add byte [rax], al<br>
+│           0x000000b4      0000           add byte [rax], al<br>
+│           0x000000b6      0000           add byte [rax], al<br>
+│           0x000000b8      0000           add byte [rax], al<br>
+│           0x000000ba      0000           add byte [rax], al<br>
+│           0x000000bc      0000           add byte [rax], al<br>
+│           0x000000be      0000           add byte [rax], al<br>
+│           0x000000c0      0000           add byte [rax], al<br>
+│           0x000000c2      0000           add byte [rax], al<br>
+│           0x000000c4      0000           add byte [rax], al<br>
+│           0x000000c6      0000           add byte [rax], al<br>
+┌ 152: fcn.00000000 (int64_t arg2, int64_t arg3);<br>
+│ `- args(rsi, rdx)<br>
+│      ┌──< 0x00000000      eb58           jmp 0x5a<br>
+       │    0x00000002      90             nop<br>
+       │    0x00000003      4d53           push r11<br>
+       │    0x00000005      444f53         push r11<br>
+       │    0x00000008      352e300002     xor eax, 0x200302e<br>
+       │    0x0000000d      105e09         adc byte [rsi + 9], bl<br>
+       │    0x00000010      0200           add al, byte [rax]<br>
+       │    0x00000012      0000           add byte [rax], al<br>
+       │    0x00000014      00f8           add al, bh<br>
+       │    0x00000016      0000           add byte [rax], al<br>
+       │    0x00000018      3f             invalid<br>
+       │    0x00000019      00ff           add bh, bh<br>
+       │    0x0000001b      0000           add byte [rax], al<br>
+       │    0x0000001d      0000           add byte [rax], al<br>
+       │    0x0000001f      0000           add byte [rax], al<br>
+       │    0x00000021      00db           add bl, bl<br>
+       │    0x00000023      01513b         add dword [rcx + 0x3b], edx<br>
+       │    0x00000026      0000           add byte [rax], al<br>
+       │    0x00000028      0000           add byte [rax], al<br>
+       │    0x0000002a      0000           add byte [rax], al<br>
+       │    0x0000002c      0200           add al, byte [rax]<br>
+       │    0x0000002e      0000           add byte [rax], al<br>
+       │    0x00000030      0100           add dword [rax], eax<br>
+       │    0x00000032      06             invalid<br>
+       │    0x00000033      0000           add byte [rax], al<br>
+       │    0x00000035      0000           add byte [rax], al<br>
+       │    0x00000037      0000           add byte [rax], al<br>
+       │    0x00000039      0000           add byte [rax], al<br>
+       │    0x0000003b      0000           add byte [rax], al<br>
+       │    0x0000003d      0000           add byte [rax], al<br>
+       │    ; DATA XREF from fcn.00000000 @ 0x9e(r)<br>
+       │    0x0000003f      00800029c670   add byte [rax + 0x70c62900], al ; [0x70c62900:1]=255<br>
+       │    0x00000045      3ebc4e4f204e   mov esp, 0x4e204f4e         ; 'NO N'<br>
+       │    0x0000004b      414d452020     and byte [r8], r12b<br>
+       │    0x00000050      2020           and byte [rax], ah<br>
+       │    0x00000052      464154         push r12<br>
+       │    0x00000055      3332           xor esi, dword [rdx]<br>
+       │    0x00000057      2020           and byte [rax], ah<br>
+       │    0x00000059  ~   2033           and byte [rbx], dh<br>
+│      │    ; CODE XREF from fcn.00000000 @ <br>
+│      └──> 0x0000005a      33c9           xor ecx, ecx<br>
+│           0x0000005c      8ed1           mov ss, ecx<br>
+│           0x0000005e      bcf47b8ec1     mov esp, 0xc18e7bf4<br>
+│           0x00000063      8ed9           mov ds, ecx<br>
+│      ┌──> 0x00000065      bd007c884e     mov ebp, 0x4e887c00<br>
+│      ╎    0x0000006a      028a5640b441   add cl, byte [rdx + 0x41b44056] ; arg3<br>
+│      ╎    0x00000070      bbaa55cd13     mov ebx, 0x13cd55aa<br>
+│     ┌───< 0x00000075      7210           jb 0x87<br>
+│     │╎    0x00000077      81fb55aa750a   cmp ebx, 0xa75aa55<br>
+│     │╎    0x0000007d      f6c101         test cl, 1                  ; "X\x90MSDOS5.0"<br>
+│    ┌────< 0x00000080      7405           je 0x87<br>
+│    ││╎    0x00000082      fe4602         inc byte [rsi + 2]          ; arg2<br>
+│   ┌─────< 0x00000085      eb2d           jmp 0xb4<br>
+│   │└└───> 0x00000087      8a5640         mov dl, byte [rsi + 0x40]   ; arg2<br>
+│   │  ╎    0x0000008a      b408           mov ah, 8<br>
+│   │ ┌───> 0x0000008c      cd13           int 0x13<br>
+│   │┌────< 0x0000008e      7305           jae 0x95<br>
+│  ┌──────> 0x00000090      b9ffff8af1     mov ecx, 0xf18affff<br>
+│  ╎│└────> 0x00000095      660fb6c6       movzx ax, dh<br>
+│  ╎│ ╎╎    0x00000099      40660fb6d1     movzx dx, cl<br>
+│  ╎│ ╎╎    0x0000009e      80e23f         and dl, 0x3f<br>
+│  ╎│ ╎╎    0x000000a1      f7e2           mul edx<br>
+│  ╎│ ╎╎    0x000000a3      86cd           xchg ch, cl<br>
+│  ╎│ ╎╎    0x000000a5      c0ed06         shr ch, 6<br>
+│  ╎│ ╎╎    0x000000a8      41660fb7c9     movzx cx, cx<br>
+│  ╎│ ╎╎    0x000000ad      66f7e1         mul cx<br>
+│  ╎│ ╎╎    0x000000b0      668946f8       mov word [rsi - 8], ax      ; arg2<br>
+│  ╎│ ╎╎    ; CODE XREF from fcn.00000000 @ 0x85(x)<br>
+│  ╎└─────> 0x000000b4      837e1600       cmp dword [rsi + 0x16], 0   ; arg2<br>
+│  ╎ ┌────< 0x000000b8      7538           jne 0xf2<br>
+│  ╎ │╎╎    0x000000ba      837e2a00       cmp dword [rsi + 0x2a], 0   ; arg2<br>
+│  ╎┌─────< 0x000000be      7732           ja 0xf2<br>
+│  ╎││╎╎    0x000000c0      668b461c       mov ax, word [rsi + 0x1c]   ; arg2<br>
+│  ╎││╎╎    0x000000c4      6683c00c       add ax, 0xc<br>
+│  ╎││╎╎    0x000000c8      bb0080b901     mov ebx, 0x1b98000<br>
+│  ╎││╎╎    0x000000cd      00e8           add al, ch<br>
+│  ╎││╎╎    0x000000cf      2b00           sub eax, dword [rax]<br>
+│  ╎││╎╎┌─< 0x000000d1      e92c03a0fa     jmp 0xfffffffffaa00402<br>
+   ╎││└───< 0x000000d6      7db4           jge 0x8c                    ; fcn.00000000+0x8c<br>
+   ╎││ └──< 0x000000d8      7d8b           jge 0x65                    ; fcn.00000000+0x65<br>
+   ╎││  │   0x000000da      f0             invalid<br>
+   ╎││  ┌─> 0x000000db      ac             lodsb al, byte [rsi]<br>
+  ╎││  ╎│   0x000000dc      84c0           test al, al<br>
+   ╎││ ┌──< 0x000000de      7417           je 0xf7                     ; fcn.00000000+0xf7<br>
+  ╎││ │╎│   0x000000e0      3cff           cmp al, 0xff<br>
+   ╎││┌───< 0x000000e2      7409           je 0xed<br>
+  ╎││││╎│   0x000000e4      b40e           mov ah, 0xe<br>
+  ╎││││╎│   0x000000e6      bb0700cd10     mov ebx, 0x10cd0007<br>
+   ╎││││└─< 0x000000eb      ebee           jmp 0xdb<br>
+   ╎││└───> 0x000000ed  ~   a0fb7debe5..   movabs al, byte [0xeb7df9a0e5eb7dfb]<br>
+│  ╎└└────> 0x000000f2      a0f97debe0..   movabs al, byte [0xcd16cd98e0eb7df9]<br>
+│       │   0x000000fb      196660         sbb dword [rsi + 0x60], esp ; arg2<br>
+│       │   0x000000fe      807e0200       cmp byte [rsi + 2], 0       ; arg2<br>
+│       │   0x00000102      0f842000666a   je 0x6a660128<br>
+│       │   0x00000108      006650         add byte [rsi + 0x50], ah<br>
+└       │   0x0000010b      06             invalid<br>
+        │   0x0000010c      53             push rbx<br>
+        │   0x0000010d      66681000       push 0x10<br>
+        │   0x00000111      0100           add dword [rax], eax<br>
+        │   0x00000113      b442           mov ah, 0x42                ; 'B'<br>
+        │   0x00000115      8a5640         mov dl, byte [rsi + 0x40]<br>
+        │   0x00000118      8bf4           mov esi, esp<br>
+        │   0x0000011a      cd13           int 0x13<br>
+┌ 3: fcn.00000000 (int64_t arg3);<br>
+│ `- args(rdx)<br>
+│           0x00000000      52             push rdx                    ; arg3<br>
+│           0x00000001      52             push rdx                    ; arg3<br>
+└           0x00000002      61             invalid<br>
+            0x00000003      410000         add byte [r8], al<br>
+            0x00000006      0000           add byte [rax], al<br>
+            0x00000008      0000           add byte [rax], al<br>
+            0x0000000a      0000           add byte [rax], al<br>
+            0x0000000c      0000           add byte [rax], al<br>
+            0x0000000e      0000           add byte [rax], al<br>
+            0x00000010      0000           add byte [rax], al<br>
+            0x00000012      0000           add byte [rax], al<br>
+            0x00000014      0000           add byte [rax], al<br>
+            0x00000016      0000           add byte [rax], al<br>
+            0x00000018      0000           add byte [rax], al<br>
+            0x0000001a      0000           add byte [rax], al<br>
+            0x0000001c      0000           add byte [rax], al<br>
+            0x0000001e      0000           add byte [rax], al<br>
+            0x00000020      0000           add byte [rax], al<br>
+            0x00000022      0000           add byte [rax], al<br>
+            0x00000024      0000           add byte [rax], al<br>
+            0x00000026      0000           add byte [rax], al<br>
+            0x00000028      0000           add byte [rax], al<br>
+            0x0000002a      0000           add byte [rax], al<br>
+            0x0000002c      0000           add byte [rax], al<br>
+            0x0000002e      0000           add byte [rax], al<br>
+            0x00000030      0000           add byte [rax], al<br>
+            0x00000032      0000           add byte [rax], al<br>
+            0x00000034      0000           add byte [rax], al<br>
+            0x00000036      0000           add byte [rax], al<br>
+            0x00000038      0000           add byte [rax], al<br>
+            0x0000003a      0000           add byte [rax], al<br>
+            0x0000003c      0000           add byte [rax], al<br>
+            0x0000003e      0000           add byte [rax], al<br>
+            0x00000040      0000           add byte [rax], al<br>
+            0x00000042      0000           add byte [rax], al<br>
+            0x00000044      0000           add byte [rax], al<br>
+            0x00000046      0000           add byte [rax], al<br>
+            0x00000048      0000           add byte [rax], al<br>
+            0x0000004a      0000           add byte [rax], al<br>
+            0x0000004c      0000           add byte [rax], al<br>
+            0x0000004e      0000           add byte [rax], al<br>
+            0x00000050      0000           add byte [rax], al<br>
+            0x00000052      0000           add byte [rax], al<br>
+            0x00000054      0000           add byte [rax], al<br>
+            0x00000056      0000           add byte [rax], al<br>
+            0x00000058      0000           add byte [rax], al<br>
+            0x0000005a      0000           add byte [rax], al<br>
+            0x0000005c      0000           add byte [rax], al<br>
+            0x0000005e      0000           add byte [rax], al<br>
+            0x00000060      0000           add byte [rax], al<br>
+            0x00000062      0000           add byte [rax], al<br>
+            0x00000064      0000           add byte [rax], al<br>
+            0x00000066      0000           add byte [rax], al<br>
+            0x00000068      0000           add byte [rax], al<br>
+            0x0000006a      0000           add byte [rax], al<br>
+            0x0000006c      0000           add byte [rax], al<br>
+            0x0000006e      0000           add byte [rax], al<br>
+            0x00000070      0000           add byte [rax], al<br>
+            0x00000072      0000           add byte [rax], al<br>
+            0x00000074      0000           add byte [rax], al<br>
+            0x00000076      0000           add byte [rax], al<br>
+            0x00000078      0000           add byte [rax], al<br>
+            0x0000007a      0000           add byte [rax], al<br>
+            0x0000007c      0000           add byte [rax], al<br>
+            0x0000007e      0000           add byte [rax], al<br>
+            0x00000080      0000           add byte [rax], al<br>
+            0x00000082      0000           add byte [rax], al<br>
+            0x00000084      0000           add byte [rax], al<br>
+            0x00000086      0000           add byte [rax], al<br>
+            0x00000088      0000           add byte [rax], al<br>
+            0x0000008a      0000           add byte [rax], al<br>
+            0x0000008c      0000           add byte [rax], al<br>
+            0x0000008e      0000           add byte [rax], al<br>
+            0x00000090      0000           add byte [rax], al<br>
+            0x00000092      0000           add byte [rax], al<br>
+            0x00000094      0000           add byte [rax], al<br>
+            0x00000096      0000           add byte [rax], al<br>
+            0x00000098      0000           add byte [rax], al<br>
+            0x0000009a      0000           add byte [rax], al<br>
+            0x0000009c      0000           add byte [rax], al<br>
+            0x0000009e      0000           add byte [rax], al<br>
+            0x000000a0      0000           add byte [rax], al<br>
+            0x000000a2      0000           add byte [rax], al<br>
+            0x000000a4      0000           add byte [rax], al<br>
+            0x000000a6      0000           add byte [rax], al<br>
+            0x000000a8      0000           add byte [rax], al<br>
+            0x000000aa      0000           add byte [rax], al<br>
+            0x000000ac      0000           add byte [rax], al<br>
+            0x000000ae      0000           add byte [rax], al<br>
+            0x000000b0      0000           add byte [rax], al<br>
+            0x000000b2      0000           add byte [rax], al<br>
+            0x000000b4      0000           add byte [rax], al<br>
+            0x000000b6      0000           add byte [rax], al<br>
+            0x000000b8      0000           add byte [rax], al<br>
+            0x000000ba      0000           add byte [rax], al<br>
+            0x000000bc      0000           add byte [rax], al<br>
+            0x000000be      0000           add byte [rax], al<br>
+            0x000000c0      0000           add byte [rax], al<br>
+            0x000000c2      0000           add byte [rax], al<br>
+            0x000000c4      0000           add byte [rax], al<br>
+┌ 512: fcn.00000000 ();<br>
+│           0x00000000      0000           add byte [rax], al<br>
+│           0x00000002      0000           add byte [rax], al<br>
+│           0x00000004      0000           add byte [rax], al<br>
+│           0x00000006      0000           add byte [rax], al<br>
+│           0x00000008      0000           add byte [rax], al<br>
+│           0x0000000a      0000           add byte [rax], al<br>
+│           0x0000000c      0000           add byte [rax], al<br>
+│           0x0000000e      0000           add byte [rax], al<br>
+│           0x00000010      0000           add byte [rax], al<br>
+│           0x00000012      0000           add byte [rax], al<br>
+│           0x00000014      0000           add byte [rax], al<br>
+│           0x00000016      0000           add byte [rax], al<br>
+│           0x00000018      0000           add byte [rax], al<br>
+│           0x0000001a      0000           add byte [rax], al<br>
+│           0x0000001c      0000           add byte [rax], al<br>
+│           0x0000001e      0000           add byte [rax], al<br>
+│           0x00000020      0000           add byte [rax], al<br>
+│           0x00000022      0000           add byte [rax], al<br>
+│           0x00000024      0000           add byte [rax], al<br>
+│           0x00000026      0000           add byte [rax], al<br>
+│           0x00000028      0000           add byte [rax], al<br>
+│           0x0000002a      0000           add byte [rax], al<br>
+│           0x0000002c      0000           add byte [rax], al<br>
+│           0x0000002e      0000           add byte [rax], al<br>
+│           0x00000030      0000           add byte [rax], al<br>
+│           0x00000032      0000           add byte [rax], al<br>
+│           0x00000034      0000           add byte [rax], al<br>
+│           0x00000036      0000           add byte [rax], al<br>
+│           0x00000038      0000           add byte [rax], al<br>
+│           0x0000003a      0000           add byte [rax], al<br>
+│           0x0000003c      0000           add byte [rax], al<br>
+│           0x0000003e      0000           add byte [rax], al<br>
+│           0x00000040      0000           add byte [rax], al<br>
+│           0x00000042      0000           add byte [rax], al<br>
+│           0x00000044      0000           add byte [rax], al<br>
+│           0x00000046      0000           add byte [rax], al<br>
+│           0x00000048      0000           add byte [rax], al<br>
+│           0x0000004a      0000           add byte [rax], al<br>
+│           0x0000004c      0000           add byte [rax], al<br>
+│           0x0000004e      0000           add byte [rax], al<br>
+│           0x00000050      0000           add byte [rax], al<br>
+│           0x00000052      0000           add byte [rax], al<br>
+│           0x00000054      0000           add byte [rax], al<br>
+│           0x00000056      0000           add byte [rax], al<br>
+│           0x00000058      0000           add byte [rax], al<br>
+│           0x0000005a      0000           add byte [rax], al<br>
+│           0x0000005c      0000           add byte [rax], al<br>
+│           0x0000005e      0000           add byte [rax], al<br>
+│           0x00000060      0000           add byte [rax], al<br>
+│           0x00000062      0000           add byte [rax], al<br>
+│           0x00000064      0000           add byte [rax], al<br>
+│           0x00000066      0000           add byte [rax], al<br>
+│           0x00000068      0000           add byte [rax], al<br>
+│           0x0000006a      0000           add byte [rax], al<br>
+│           0x0000006c      0000           add byte [rax], al<br>
+│           0x0000006e      0000           add byte [rax], al<br>
+│           0x00000070      0000           add byte [rax], al<br>
+│           0x00000072      0000           add byte [rax], al<br>
+│           0x00000074      0000           add byte [rax], al<br>
+│           0x00000076      0000           add byte [rax], al<br>
+│           0x00000078      0000           add byte [rax], al<br>
+│           0x0000007a      0000           add byte [rax], al<br>
+│           0x0000007c      0000           add byte [rax], al<br>
+│           0x0000007e      0000           add byte [rax], al<br>
+│           0x00000080      0000           add byte [rax], al<br>
+│           0x00000082      0000           add byte [rax], al<br>
+│           0x00000084      0000           add byte [rax], al<br>
+│           0x00000086      0000           add byte [rax], al<br>
+│           0x00000088      0000           add byte [rax], al<br>
+│           0x0000008a      0000           add byte [rax], al<br>
+│           0x0000008c      0000           add byte [rax], al<br>
+│           0x0000008e      0000           add byte [rax], al<br>
+│           0x00000090      0000           add byte [rax], al<br>
+│           0x00000092      0000           add byte [rax], al<br>
+│           0x00000094      0000           add byte [rax], al<br>
+│           0x00000096      0000           add byte [rax], al<br>
+│           0x00000098      0000           add byte [rax], al<br>
+│           0x0000009a      0000           add byte [rax], al<br>
+│           0x0000009c      0000           add byte [rax], al<br>
+│           0x0000009e      0000           add byte [rax], al<br>
+│           0x000000a0      0000           add byte [rax], al<br>
+│           0x000000a2      0000           add byte [rax], al<br>
+│           0x000000a4      0000           add byte [rax], al<br>
+│           0x000000a6      0000           add byte [rax], al<br>
+│           0x000000a8      0000           add byte [rax], al<br>
+│           0x000000aa      0000           add byte [rax], al<br>
+│           0x000000ac      0000           add byte [rax], al<br>
+│           0x000000ae      0000           add byte [rax], al<br>
+│           0x000000b0      0000           add byte [rax], al<br>
+│           0x000000b2      0000           add byte [rax], al<br>
+│           0x000000b4      0000           add byte [rax], al<br>
+│           0x000000b6      0000           add byte [rax], al<br>
+│           0x000000b8      0000           add byte [rax], al<br>
+│           0x000000ba      0000           add byte [rax], al<br>
+│           0x000000bc      0000           add byte [rax], al<br>
+│           0x000000be      0000           add byte [rax], al<br>
+│           0x000000c0      0000           add byte [rax], al<br>
+│           0x000000c2      0000           add byte [rax], al<br>
+│           0x000000c4      0000           add byte [rax], al<br>
+│           0x000000c6      0000           add byte [rax], al<br>
+┌ 35: fcn.00000000 (int64_t arg2);<br>
+│ `- args(rsi)<br>
+│           0x00000000      660fb64610     movzx ax, byte [rsi + 0x10] ; arg2<br>
+│           0x00000005      668b4e24       mov cx, word [rsi + 0x24]   ; arg2<br>
+│           0x00000009      66f7e1         mul cx<br>
+│           0x0000000c      6603461c       add ax, word [rsi + 0x1c]   ; arg2<br>
+│           0x00000010      660fb7560e     movzx dx, word [rsi + 0xe]  ; arg2<br>
+│           0x00000015      6603c2         add ax, dx<br>
+│           0x00000018      668946fc       mov word [rsi - 4], ax      ; arg2<br>
+│           0x0000001c      66c746f4ffff   mov word [rsi - 0xc], 0xffff ; arg2<br>
+└           0x00000022      ff             invalid<br>
+            0x00000023      ff668b         jmp qword [rsi - 0x75]<br>
+            0x00000026      462c66         sub al, 0x66<br>
+            0x00000029      83f802         cmp eax, 2<br>
+        ┌─< 0x0000002c      0f82c2fc663d   jb 0x3d66fcf4<br>
+        │   0x00000032      f8             clc<br>
+        │   0x00000033      ff             invalid<br>
+        │   0x00000034      ff0f           dec dword [rdi]<br>
+       ┌──< 0x00000036      0f83b8fc6650   jae 0x5066fcf4<br>
+       ││   0x0000003c      6683e802       sub ax, 2<br>
+       ││   0x00000040      660fb65e0d     movzx bx, byte [rsi + 0xd]<br>
+       ││   0x00000045      8bf3           mov esi, ebx<br>
+       ││   0x00000047      66f7e3         mul bx<br>
+       ││   0x0000004a      660346fc       add ax, word [rsi - 4]<br>
+      ┌───> 0x0000004e      bb00828bfb     mov ebx, 0xfb8b8200<br>
+      ╎││   0x00000053      b90100e8a3     mov ecx, 0xa3e80001<br>
+      ╎││   0x00000058      fc             cld<br>
+     ┌────> 0x00000059      382d741eb10b   cmp byte [0x0bb11ed3], ch   ; [0xbb11ed3:1]=255<br>
+     ╎╎││   0x0000005f      56             push rsi<br>
+     ╎╎││   0x00000060      be697df3a6     mov esi, 0xa6f37d69<br>
+     ╎╎││   0x00000065      5e             pop rsi<br>
+    ┌─────< 0x00000066      741b           je 0x83<br>
+    │╎╎││   0x00000068      03f9           add edi, ecx<br>
+    │╎╎││   0x0000006a      83c715         add edi, 0x15<br>
+    │╎╎││   0x0000006d      3bfb           cmp edi, ebx<br>
+    │└────< 0x0000006f      72e8           jb 0x59<br>
+    │ └───< 0x00000071      4e75da         jne 0x4e<br>
+    │  ││   0x00000074      6658           pop ax<br>
+    │  ││   0x00000076      e8650072bf     call 0xffffffffbf7200e0<br>
+    │  ││   0x0000007b      83c404         add esp, 4<br>
+    │ ┌───< 0x0000007e      e971fc0020     jmp 0x2000fcf4<br>
+    └─────> 0x00000083      83c404         add esp, 4<br>
+      │││   0x00000086      8b7509         mov esi, dword [rbp + 9]<br>
+      │││   0x00000089      8b7d0f         mov edi, dword [rbp + 0xf]<br>
+      │││   0x0000008c      8bc6           mov eax, esi<br>
+      │││   0x0000008e      66c1e010       shl ax, 0x10<br>
+      │││   0x00000092      8bc7           mov eax, edi<br>
+      │││   0x00000094      6683f802       cmp ax, 2<br>
+     ┌────< 0x00000098      0f8256fc663d   jb 0x3d66fcf4<br>
+     ││││   0x0000009e      f8             clc<br>
+     ││││   0x0000009f      ff             invalid<br>
+     ││││   0x000000a0      ff0f           dec dword [rdi]<br>
+    ┌─────< 0x000000a2      0f834cfc6650   jae 0x5066fcf4<br>
+    │││││   0x000000a8      6683e802       sub ax, 2<br>
+    │││││   0x000000ac      660fb64e0d     movzx cx, byte [rsi + 0xd]<br>
+    │││││   0x000000b1      66f7e1         mul cx<br>
+    │││││   0x000000b4      660346fc       add ax, word [rsi - 4]<br>
+    │││││   0x000000b8      bb0000068e     mov ebx, 0x8e060000<br>
+    │││││   0x000000bd      06             invalid<br>
+    │││││   0x000000be      8180e839fc..   add dword [rax + 0x7fc39e8], 0xebc15866 ; [0x7fc39e8:4]=-1<br>
+    │││││   0x000000c8      0401           add al, 1<br>
+    │││││   0x000000ca      1e             invalid<br>
+    │││││   0x000000cb      8180e80e00..   add dword [rax + 0xf000ee8], 0x72000283 ; [0xf000ee8:4]=-1<br>
+    │││││   0x000000d5      d08a5640ea00   ror byte [rdx + 0xea4056], 1<br>
+    │││││   0x000000db      0000           add byte [rax], al<br>
+    │││││   0x000000dd      2066c1         and byte [rsi - 0x3f], ah<br>
+   ┌──────< 0x000000e0      e002           loopne 0xe4<br>
+   ││││││   0x000000e2      e811002666     call 0x662600f8<br>
+    │││││   0x000000e7      8b01           mov eax, dword [rcx]<br>
+    │││││   0x000000e9      6625ffff       and ax, 0xffff<br>
+    │││││   0x000000ed      ff0f           dec dword [rdi]<br>
+    │││││   0x000000ef      663df8ff       cmp ax, 0xfff8<br>
+    │││││   0x000000f3      ff0f           dec dword [rdi]<br>
+    │││││   0x000000f5      c3             ret<br>
+    │││││   0x000000f6      bf007e660f     mov edi, 0xf667e00<br>
+    │││││   0x000000fb      b74e           mov bh, 0x4e                ; 'N'<br>
+    │││││   0x000000fd      0b6633         or esp, dword [rsi + 0x33]<br>
+    │││││   0x00000100      d266f7         shl byte [rsi - 9], cl<br>
+    │││││   0x00000103      f1             int1<br>
+    │││││   0x00000104      663b46f4       cmp ax, word [rsi - 0xc]<br>
+    │││││   0x00000108      743a           je 0x144<br>
+    │││││   0x0000010a      668946f4       mov word [rsi - 0xc], ax<br>
+    │││││   0x0000010e      6603461c       add ax, word [rsi + 0x1c]<br>
+    │││││   0x00000112      660fb74e0e     movzx cx, word [rsi + 0xe]<br>
+    │││││   0x00000117      6603c1         add ax, cx<br>
+    │││││   0x0000011a      660fb75e28     movzx bx, word [rsi + 0x28]<br>
+    │││││   0x0000011f      83e30f         and ebx, 0xf<br>
+    │││││   0x00000122      7416           je 0x13a<br>
+    │││││   0x00000124      3a5e10         cmp bl, byte [rsi + 0x10]<br>
+    │││││   0x00000127      0f83c7fb5266   jae 0x6652fcf4<br>
+    │││││   0x0000012d      8bc8           mov ecx, eax<br>
+    │││││   0x0000012f      668b4624       mov ax, word [rsi + 0x24]<br>
+    │││││   0x00000133      66f7e3         mul bx<br><br>
+    │││││   0x00000136      6603c1         add ax, cx<br>
+    │││││   0x00000139      5a             pop rdx<br>
+    │││││   0x0000013a      52             push rdx<br>
+    │││││   0x0000013b      8bdf           mov ebx, edi<br><br>
+    │││││   0x0000013d      b90100e8b9     mov ecx, 0xb9e80001<br>
+    │││││   0x00000142      fb             sti<br>
+    │││││   0x00000143      5a             pop rdx<br><br>
+    │││││   0x00000144      8bda           mov ebx, edx<br>
+    │││││   0x00000146      c3             ret<br>
+┌ 2: fcn.00000000 ();<br>
+│           0x00000000      f8             clc<br>
+└           0x00000001      ff             invalid<br>
+            0x00000002      ff0f           dec dword [rdi]<br>
+            0x00000004      ff             invalid<br>
+            0x00000005      ff             invalid<br>
+            0x00000006      ff             invalid<br>
+            0x00000007      ff             invalid<br>
+            0x00000008      ff             invalid<br>
+            0x00000009      ff             invalid<br>
+            0x0000000a      ff0f           dec dword [rdi]<br>
+            0x0000000c      0000           add byte [rax], al<br>
+            0x0000000e      0000           add byte [rax], al<br>
+            0x00000010      0000           add byte [rax], al<br>
+            0x00000012      0000           add byte [rax], al<br>
+            0x00000014      0000           add byte [rax], al<br>
+            0x00000016      0000           add byte [rax], al<br>
+            0x00000018      0000           add byte [rax], al<br>
+            0x0000001a      0000           add byte [rax], al<br>
+            0x0000001c      0000           add byte [rax], al<br>
+            0x0000001e      0000           add byte [rax], al<br>
+            0x00000020      0000           add byte [rax], al<br>
+            0x00000022      0000           add byte [rax], al<br>
+            0x00000024      0000           add byte [rax], al<br>
+            0x00000026      0000           add byte [rax], al<br>
+            0x00000028      0000           add byte [rax], al<br>
+            0x0000002a      0000           add byte [rax], al<br>
+            0x0000002c      0000           add byte [rax], al<br>
+            0x0000002e      0000           add byte [rax], al<br>
+            0x00000030      0000           add byte [rax], al<br>
+            0x00000032      0000           add byte [rax], al<br>
+            0x00000034      0000           add byte [rax], al<br>
+            0x00000036      0000           add byte [rax], al<br>
+            0x00000038      0000           add byte [rax], al<br>
+            0x0000003a      0000           add byte [rax], al<br>
+            0x0000003c      0000           add byte [rax], al<br>
+            0x0000003e      0000           add byte [rax], al<br>
+            0x00000040      0000           add byte [rax], al<br>
+            0x00000042      0000           add byte [rax], al<br>
+            0x00000044      0000           add byte [rax], al<br>
+            0x00000046      0000           add byte [rax], al<br>
+            0x00000048      0000           add byte [rax], al<br>
+            0x0000004a      0000           add byte [rax], al<br>
+            0x0000004c      0000           add byte [rax], al<br>
+            0x0000004e      0000           add byte [rax], al<br>
+            0x00000050      0000           add byte [rax], al<br>
+            0x00000052      0000           add byte [rax], al<br>
+            0x00000054      0000           add byte [rax], al<br>
+            0x00000056      0000           add byte [rax], al<br>
+            0x00000058      0000           add byte [rax], al<br>
+            0x0000005a      0000           add byte [rax], al<br>
+            0x0000005c      0000           add byte [rax], al<br>
+            0x0000005e      0000           add byte [rax], al<br>
+            0x00000060      0000           add byte [rax], al<br>
+            0x00000062      0000           add byte [rax], al<br>
+            0x00000064      0000           add byte [rax], al<br>
+            0x00000066      0000           add byte [rax], al<br>
+            0x00000068      0000           add byte [rax], al<br>
+            0x0000006a      0000           add byte [rax], al<br>
+            0x0000006c      0000           add byte [rax], al<br>
+            0x0000006e      0000           add byte [rax], al<br>
+            0x00000070      0000           add byte [rax], al<br>
+            0x00000072      0000           add byte [rax], al<br>
+            0x00000074      0000           add byte [rax], al<br>
+            0x00000076      0000           add byte [rax], al<br>
+            0x00000078      0000           add byte [rax], al<br>
+            0x0000007a      0000           add byte [rax], al<br>
+            0x0000007c      0000           add byte [rax], al<br>
+            0x0000007e      0000           add byte [rax], al<br>
+            0x00000080      0000           add byte [rax], al<br>
+            0x00000082      0000           add byte [rax], al<br>
+            0x00000084      0000           add byte [rax], al<br>
+            0x00000086      0000           add byte [rax], al<br>
+            0x00000088      0000           add byte [rax], al<br>
+            0x0000008a      0000           add byte [rax], al<br>
+            0x0000008c      0000           add byte [rax], al<br>
+            0x0000008e      0000           add byte [rax], al<br>
+            0x00000090      0000           add byte [rax], al<br>
+            0x00000092      0000           add byte [rax], al<br>
+            0x00000094      0000           add byte [rax], al<br>
+            0x00000096      0000           add byte [rax], al<br>
+            0x00000098      0000           add byte [rax], al<br>
+            0x0000009a      0000           add byte [rax], al<br>
+            0x0000009c      0000           add byte [rax], al<br>
+            0x0000009e      0000           add byte [rax], al<br>
+            0x000000a0      0000           add byte [rax], al<br>
+            0x000000a2      0000           add byte [rax], al<br>
+            0x000000a4      0000           add byte [rax], al<br>
+            0x000000a6      0000           add byte [rax], al<br>
+            0x000000a8      0000           add byte [rax], al<br>
+            0x000000aa      0000           add byte [rax], al<br>
+            0x000000ac      0000           add byte [rax], al<br>
+            0x000000ae      0000           add byte [rax], al<br>
+            0x000000b0      0000           add byte [rax], al<br>
+            0x000000b2      0000           add byte [rax], al<br>
+            0x000000b4      0000           add byte [rax], al<br>
+            0x000000b6      0000           add byte [rax], al<br>
+            0x000000b8      0000           add byte [rax], al<br>
+            0x000000ba      0000           add byte [rax], al<br>
+            0x000000bc      0000           add byte [rax], al<br>
+            0x000000be      0000           add byte [rax], al</code><br>
+</pre></details>
+<h3 id=skip>What Does This Do?</h3>
+<p>This machine code gets passed into the firmware in the USB chip responsible for reading and writing operations. If modified, it could use the sectors on the USB drive to store execution commands as well as payloads on the device meant to be executed. Each hex code entry corresponds to the location of the instruction in the sector it was found. Though they may be seperated across the entire USB partition, the controller acts as a central location for access to the code and execution of it. There are even <code>jmp</code> commands that act as tripwires for destruction of data on the drive should specific sectors get read. If the controller misses the jump command, the data gets zeroed. This makes it impervious to linear reading algorithms. The only way to get access to the payloads that run is to bypass the USB controller at the hardware level and then use a replacement controller to read what gets zeroed out when tampering.</p>
+<p>If we follow the juimp we get down to what looks like the main controller logic for the payload delivery mechanism. A lot of large hex addresses get moved. MSODOS5.0 gets triggered. More bytes get moved. Functions are called with parameters. Then another tripwire is added to start zeroing if somehow the first one wasn't tripped. Here's where things get interesting though...</p>
+<h3>The USB Landed Into The Board</h3>
+<code>int 0x13</code>
+<p>This is an interrupt. Likely correlating to a system interrupt at a hardware level. By doing this, MSODOS5.0 is able to interrupt the running system and load MSDOS in SMM mode. Somehow this USB is targeting and interrupting a specific service and piece of hardware to insert itself into the system. Not too long after it another block of assembly we see <code>jmp 0xfffffffffaa00402</code> followed by more function calls. This value is outrageous. The only conceivable way that this is a real number, is that the attacker is calculating the 64^2 approximate location value of a target and is attempting to access it by a buffer overflow attack at the architecture level. There are some other calls later on in the code, but the majority of it is cleanup after execution. This is slick. It operates without permission, it roots into the machine without consent and then sets up the chain for its own persistence.</p>
+<h3>The Truth Buried In The Code</h3>
+<p>The code is very complex. At first glance it looks like what you would expect from root and persistance kits, but this was hand crafted for the target, me. The only way the attacker could have calculated the values necessary to land in the locations it needed to set itself would need to be very accurate and planned. This type of attack doesn't just take advantage of hooks left my the firmware, but calculates where it needs to jump to then execute code to inject the malware. On top of that, the attacker took time to add watermarks and taunts to me, not observable unless you are really digging.</p>
+<code>0x00000059      382d741eb10b   cmp byte [0x0bb11ed3], ch   ; [0xbb11ed3:1]=255</code>
+<p>It doesn't seem like much at first, but hackers and coders sometimes use a language called 1337-speak. It's a programmatic way for typing number variant characters to express letters. It wasn't until afterwards I would look at my efivars and see in the entries, "GoodNightLed". So this Hex value comparison, probably means, "bye bye little LED." This hex check was likely a way of confirming that the code ran successfully. "Bye bye" in this context, means the malware was installed, the persistance was added and my rig was intended to be dead.</p>
+<h3>Deeper Down The Rabbit Hole...</h3>
+<p>From here the only place to go is deeper into the BIOS and the EFI territory. All the EFI indicated that something was booting from the board. EFI redirects allowed whatever was booting to pass through a corrupted UEFI shell to give the root kit access to any kernel that runs. It had masked EFIs present in the EFI directory structure, a 32-bit shell application. EFI's that only appeared to the built-in shell when the net driver running the malware was unloaded in shell. It was and still is, masking system resources by interrupting the handoff to kernel-firmware negotiation steps in the boot process. After exhaustively pouring through all the information available in shell, efi and system utilities a conclusion was drawn. This persistence kit was creating a hypervisor for the kernel to pass through. It's an almost invisible firmware level persistence kit. A user would be none the wiser, thinking a repartition of a drive and a new OS fixed the issue. Even worse it is clearly personally motivated and targeted. Worse, they used tools that weren't theirs.</p>
+<h2>Who Dunnit?</h2>
+<h3>I've Never Heard Of Anything Like This</h3>
+<p>This was not a normal attack. It was state of the art. The actor had unfettered access to Cloud infrastructure, seemingly upstream. They were able to coordinate ISP infrastructure failure to open up a browser attack for data delivery. Google, a proposed security giant, listed a query with SSL disabled, when external sources verified it was active. Microsoft AppX Store carried entries that were not a part of the manifest. Knowledge of I2C and C2 commands allows them to travel in application pipes that normally support OS runtime. The actor had all the information of my entire machine, down to the hardware specifications. They had time to stage different layers of attack so that the hack looked simple, even when it went deeper than appears. Even though I intercepted the actor and they panicked, they had failsafes and persistence kits at the ready. The worse part of all, is since the attack was in the cloud, it is assumed they had access to company cloud accounts under my name as well. This is assumed with certain things that were observed occurring on my machine.</p>
+<h3>They Were Not Alone</h3>
+<p>If the attack started in the Cloud, they had access to or owned a knowledge base spanning from early 90s MSDOS days, all the way up until today.
+They had access to my work accounts before they even prepared attacking my personal computer. They knew of my real name as well as my github username.
+The strangest thing of all, the only communications that occurred using both my public and github username was to Microsoft. Shortly after this attack, Microsoft faced a Sharepoint hack. The lack of response from Microsoft and the FBI was notice enough. Something was going on in the Cloud and they seemed aware. Was I part of a retaliation from a Red-Teamer angry that I crossed paths with them? Did my contribution to the Open Source process, which is how Open Source is supposed to function warrant a response?The bit of evidence that corroborate this theory is one last piece of information they left behind.</p>
+<h3>MORDOR</h3>
+<p>There in the <code>dmidecode</code> outputs amongst the many 32-bit handles left over from Hypervisor UEFI...was one entry that stood out.</p>
+<code>Handle 0x000E, DMI type 40, 14 bytes<br>
+Additional Information 1<br>
+	Referenced Handle: 0x00a1<br>
+	Referenced Offset: 0x01<br>
+	String: MORDOR<br>
+	Value: 0x00000000
+</code>
+<p>Mordor...seemed oddly specific. The land where the Eye of Sauron looks upon the land and sees all that is going on. Fitting for such a complex kit where the goal is persistance and surveillance.</p>
+<p>I wonder if it's in reference to <a href="https://github.com/OTRF/SimuLand">this</a>?</p>
+<p>You know, that's the strangest thing because...even the models agree that this type of attack looked very-much like APT29.
+What a weird coincidence! Even weirder is that the core contributors from SimuLand and OTR are from Microsoft. Strange indeed.
+However, I know the fingerprints of the person that coded this attack and both of you are too young. Simuland is definitely the right tool, but it's not the right actor.</p>
+</section>
+  <div class="content">
+  </div>
+  <footer>
+    &copy; 2025 BryteLite | ThinkTank Project
+			All rights reserved.
+            Last updated: August 5, 2025.
+  </footer>
+</body>
+</html>
